@@ -522,7 +522,8 @@ PlasmaCore.ToolTipArea {
             rightMargin: ((inPopup || tasksRoot.vertical) && taskList.columns > 1) ? LayoutMetrics.iconMargin : 0
         }
 
-        imagePath: "widgets/tasks"
+        // que lo lea del skin
+        imagePath: tasks.skinParams.imagetask
         property bool isHovered: task.highlighted && Plasmoid.configuration.taskHoverEffect
         property string basePrefix: "normal"
         prefix: isHovered ? TaskTools.taskPrefixHovered(basePrefix, Plasmoid.location) : TaskTools.taskPrefix(basePrefix, Plasmoid.location)

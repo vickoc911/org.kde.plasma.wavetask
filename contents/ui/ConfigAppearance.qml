@@ -7,6 +7,7 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
+import Qt.labs.folderlistmodel // Importante para listar las carpetas de skins
 
 import org.kde.kcmutils as KCMUtils
 import org.kde.kirigami as Kirigami
@@ -16,18 +17,82 @@ import org.kde.plasma.plasmoid
 KCMUtils.SimpleKCM {
     readonly property bool plasmaPaAvailable: Qt.createComponent("PulseAudio.qml").status === Component.Ready
     readonly property bool plasmoidVertical: Plasmoid.formFactor === PlasmaCore.Types.Vertical
-    readonly property bool iconOnly: Plasmoid.pluginName === "org.kde.plasma.wavetask"
+    readonly property bool iconOnly: Plasmoid.pluginName === "org.kde.taskmanagerosx"
 
+    // --- PROPIEDADES PRINCIPALES ---
+    property string cfg_skinName: Plasmoid.configuration.skinName
     property alias cfg_showToolTips: showToolTips.checked
     property alias cfg_highlightWindows: highlightWindows.checked
-    property bool cfg_indicateAudioStreams
-    property bool cfg_interactiveMute
-    property bool cfg_tooltipControls
     property alias cfg_fill: fill.checked
     property alias cfg_maxStripes: maxStripes.value
     property alias cfg_forceStripes: forceStripes.checked
     property alias cfg_taskMaxWidth: taskMaxWidth.currentIndex
-    property int cfg_iconSpacing: 0
+    property int cfg_iconSpacing: Plasmoid.configuration.iconSpacing
+
+    // --- ESCUDO CONTRA ERRORES DE PLASMA 6 ---
+    // Declaramos estas propiedades para que Plasma pueda "escribir" en ellas al iniciar
+    // y no aborte la carga del componente gráfico.
+    property var cfg_indicateAudioStreams: Plasmoid.configuration.indicateAudioStreams
+    property var cfg_interactiveMute: Plasmoid.configuration.interactiveMute
+    property var cfg_tooltipControls: Plasmoid.configuration.tooltipControls
+
+    // Capturamos todos los "Default" y propiedades extra que se muestran en el log
+    property var cfg_configuration
+    property var cfg_fillDefault
+    property var cfg_forceStripesDefault
+    property var cfg_groupPopups
+    property var cfg_groupPopupsDefault
+    property var cfg_groupedTaskVisualization
+    property var cfg_groupedTaskVisualizationDefault
+    property var cfg_groupingAppIdBlacklist
+    property var cfg_groupingAppIdBlacklistDefault
+    property var cfg_groupingLauncherUrlBlacklist
+    property var cfg_groupingLauncherUrlBlacklistDefault
+    property var cfg_groupingStrategy
+    property var cfg_groupingStrategyDefault
+    property var cfg_hideLauncherOnStart
+    property var cfg_hideLauncherOnStartDefault
+    property var cfg_highlightWindowsDefault
+    property var cfg_iconSpacingDefault
+    property var cfg_indicateAudioStreamsDefault
+    property var cfg_interactiveMuteDefault
+    property var cfg_launchers
+    property var cfg_launchersDefault
+    property var cfg_maxStripesDefault
+    property var cfg_maxTextLines
+    property var cfg_maxTextLinesDefault
+    property var cfg_middleClickAction
+    property var cfg_middleClickActionDefault
+    property var cfg_minimizeActiveTaskOnClick
+    property var cfg_minimizeActiveTaskOnClickDefault
+    property var cfg_onlyGroupWhenFull
+    property var cfg_onlyGroupWhenFullDefault
+    property var cfg_reverseMode
+    property var cfg_reverseModeDefault
+    property var cfg_separateLaunchers
+    property var cfg_separateLaunchersDefault
+    property var cfg_showOnlyCurrentActivity
+    property var cfg_showOnlyCurrentActivityDefault
+    property var cfg_showOnlyCurrentDesktop
+    property var cfg_showOnlyCurrentDesktopDefault
+    property var cfg_showOnlyCurrentScreen
+    property var cfg_showOnlyCurrentScreenDefault
+    property var cfg_showOnlyMinimized
+    property var cfg_showOnlyMinimizedDefault
+    property var cfg_showToolTipsDefault
+    property var cfg_skinNameDefault
+    property var cfg_sortingStrategy
+    property var cfg_sortingStrategyDefault
+    property var cfg_taskHoverEffect
+    property var cfg_taskHoverEffectDefault
+    property var cfg_taskMaxWidthDefault
+    property var cfg_tooltipControlsDefault
+    property var cfg_unhideOnAttention
+    property var cfg_unhideOnAttentionDefault
+    property var cfg_wheelEnabled
+    property var cfg_wheelEnabledDefault
+    property var cfg_wheelSkipMinimized
+    property var cfg_wheelSkipMinimizedDefault
 
     Component.onCompleted: {
         /* Don't rely on bindings for checking the radiobuttons
@@ -43,6 +108,60 @@ KCMUtils.SimpleKCM {
         }
     }
     Kirigami.FormLayout {
+        // ComboBox para mostrar los skins
+        QQC2.ComboBox {
+            id: skinChooser
+            Kirigami.FormData.label: "Skin:"
+            textRole: "fileName"
+
+            // Usamos una propiedad local para rastrear si ya sincronizamos el valor inicial
+            property bool initialSyncDone: false
+
+            model: FolderListModel {
+                id: folderModel
+                folder: Qt.resolvedUrl("../skins")
+                showDirs: true
+                showFiles: false
+                showDotAndDotDot: false
+                // Forzamos a que el modelo se mantenga actualizado
+                sortField: FolderListModel.Name
+            }
+
+            onActivated: {
+                // Actualizamos la configuración al elegir manualmente
+                cfg_skinName = textAt(currentIndex)
+            }
+
+            function syncValue() {
+                // Si el modelo ya tiene carpetas y aún no hemos sincronizado...
+                if (count > 0 && !initialSyncDone) {
+                    for (let i = 0; i < count; i++) {
+                        if (textAt(i) === cfg_skinName) {
+                            currentIndex = i;
+                            initialSyncDone = true; // Marcamos como hecho
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Monitoreamos cuando el modelo termine de cargar los archivos
+            Connections {
+                target: folderModel
+                // 'status' cambia a FolderListModel.Ready cuando termina de leer el disco
+                function onStatusChanged() {
+                    if (folderModel.status === FolderListModel.Ready) {
+                        skinChooser.syncValue();
+                    }
+                }
+                // Por si acaso los archivos ya estaban listos
+                function onCountChanged() { skinChooser.syncValue() }
+            }
+
+            // Intentar sincronizar al completar por si el disco es ultra rápido
+            Component.onCompleted: syncValue()
+        }
+
         QQC2.CheckBox {
             id: showToolTips
             Kirigami.FormData.label: i18nc("@label for several checkboxes", "General:")

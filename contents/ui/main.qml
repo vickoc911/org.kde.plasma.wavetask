@@ -75,6 +75,52 @@ PlasmoidItem {
         tasks.Plasmoid.backgroundHints = (isBackgroundDisabled) ? 0 : 1;
     }
 
+    // --- LÓGICA DE SKINS ---
+    property var skinParams: ({
+        image: "", imagetask: "",
+        left: 0, top: 0, right: 0, bottom: 0,
+        outLeft: 0, outTop: 0, outRight: 0, outBottom: 0
+    })
+
+    function loadSkinConfig() {
+        let skinName = Plasmoid.configuration.skinName || "default";
+        // Construimos la ruta al nuevo archivo Config.qml
+        let configUrl = Qt.resolvedUrl("../skins/" + skinName + "/Config.qml");
+
+        console.log("Cargando configuración de skin desde: " + configUrl);
+
+        let component = Qt.createComponent(configUrl);
+
+        if (component.status === Component.Ready) {
+            let config = component.createObject(tasks); // 'tasks' es el id de tu PlasmoidItem
+
+            if (config) {
+                let skinFolderUrl = Qt.resolvedUrl("../skins/" + skinName + "/").toString();
+
+                // Actualizamos skinParams de forma reactiva
+                tasks.skinParams = {
+                    image: skinFolderUrl + config.image,
+                    imagetask: skinFolderUrl + config.imagetask,
+                    left: config.leftMargin,
+                    top: config.topMargin,
+                    right: config.rightMargin,
+                    bottom: config.bottomMargin,
+                    outLeft: config.outsideLeftMargin,
+                    outTop: config.outsideTopMargin,
+                    outRight: config.outsideRightMargin,
+                    outBottom: config.outsideBottomMargin
+                };
+
+                console.log("EXITO: Skin '" + skinName + "' cargada. Imagen: " + tasks.skinParams.image);
+
+                // Limpiamos el objeto temporal de memoria
+                config.destroy();
+            }
+        } else {
+            console.log("ERROR al cargar Config.qml: " + component.errorString());
+            // Fallback: Si no existe el .qml, podrías intentar cargar valores por defecto aquí
+        }
+    }
 
     Plasmoid.onUserConfiguringChanged: {
         if (Plasmoid.userConfiguring && groupDialog !== null) {
@@ -358,6 +404,15 @@ PlasmoidItem {
         Connections {
             target: Plasmoid.configuration
 
+            function onSkinNameChanged() {
+                console.log("Nueva skin detectada: " + Plasmoid.configuration.skinName);
+                loadSkinConfig(); // La función que lee el .ini y carga la imagen
+            }
+
+            function onConfigurationChanged() {
+                loadSkinConfig();
+            }
+
             function onLaunchersChanged(): void {
                 tasksModel.launcherList = Plasmoid.configuration.launchers
             }
@@ -428,6 +483,45 @@ PlasmoidItem {
         ToolTipDelegate {
             id: pinnedAppToolTipDelegate
             visible: false
+        }
+
+        BorderImage {
+            id: dockBackground
+            asynchronous: false
+            //   cache: true
+            visible: source.toString() !== "" // Solo visible si hay imagen
+            opacity: 1.0
+
+            anchors {
+                fill: parent
+                // Aplicamos los márgenes EXTERIORES del .ini
+                leftMargin: tasks.skinParams.outLeft
+                topMargin: tasks.skinParams.outTop
+                rightMargin: tasks.skinParams.outRight
+                bottomMargin: tasks.skinParams.outBottom
+            }
+
+            // Imagen dinámica del skin
+            source: tasks.skinParams.image
+
+            // Márgenes INTERIORES para el estiramiento (BorderImage)
+            border {
+                left: tasks.skinParams.left
+                top: tasks.skinParams.top
+                right: tasks.skinParams.right
+                bottom: tasks.skinParams.bottom
+            }
+
+            horizontalTileMode: BorderImage.Stretch
+            verticalTileMode: BorderImage.Stretch
+            z: -1
+         /*   onStatusChanged: {
+                if (status === BorderImage.Error) {
+                    console.log("ERROR QML: No se pudo cargar la imagen desde: " + source);
+                } else if (status === BorderImage.Ready) {
+                    console.log("EXITO: Imagen de fondo aplicada correctamente.");
+                }
+            } */
         }
 
         TriangleMouseFilter {
@@ -678,6 +772,9 @@ PlasmoidItem {
     Component.onCompleted: {
         TaskTools.taskManagerInstanceCount += 1;
         requestLayout.connect(iconGeometryTimer.restart);
+        applyBackgroundHint();
+        // --- CARGAR SKIN AL INICIAR ---
+        loadSkinConfig();
     }
 
     Component.onDestruction: {
