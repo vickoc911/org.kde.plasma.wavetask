@@ -1,6 +1,12 @@
 # org.kde.plasma.wavetask
 It still has many bugs, but it more or less works. It's based on the default task manager of KDE 6.5.
 
+How to install:
+- Download the code
+- Unzip and rename the folder to org.kde.plasma.wavetask
+- Copy the org.kde.plasma.wavetask folder to /home/victor/.local/share/plasma/plasmoids/
+- That's it.
+
 Features:
 
 - Zoom like in macOS
