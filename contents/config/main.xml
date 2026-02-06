@@ -153,6 +153,10 @@
       <label> Spacing between icons in task manager. Margin is multiplied by this value.</label>
       <default>1</default>
     </entry>
+    <entry name="skinName" type="String">
+      <label> Skin.</label>
+      <default>default</default>
+    </entry>
   </group>
 
 </kcfg>
