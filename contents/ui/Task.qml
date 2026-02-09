@@ -124,7 +124,7 @@ PlasmaCore.ToolTipArea {
     // Mantenemos el Behavior para que la transición al salir del dock sea suave
     Behavior on zoomFactor {
         NumberAnimation {
-            duration: 100
+            duration: 150
             easing.type: Easing.OutCubic
         }
     }
@@ -393,25 +393,38 @@ PlasmaCore.ToolTipArea {
     }
 
     // Will also be called in activateTaskAtIndex(index)
+    // Will also be called in activateTaskAtIndex(index)
     function updateMainItemBindings(): void {
-        // Si ya somos el item activo, abortamos para evitar el Stack Overflow
-        if (tasksRoot.toolTipAreaItem === task && mainItem.parentTask === task) {
+        if ((mainItem.parentTask === this && mainItem.rootIndex.row === index)
+            || (tasksRoot.toolTipOpenedByClick === null && !active)
+            || (tasksRoot.toolTipOpenedByClick !== null && tasksRoot.toolTipOpenedByClick !== this)) {
             return;
-        }
+            }
 
-        mainItem.blockingUpdates = true;
+            mainItem.blockingUpdates = (mainItem.isGroup !== model.IsGroupParent); // BUG 464597 Force unload the previous component
 
-        // Asignaciones directas (sin Qt.binding para evitar recursividad)
-        mainItem.parentTask = task;
+            mainItem.parentTask = this;
         mainItem.rootIndex = tasksModel.makeModelIndex(index, -1);
-        mainItem.appName = model.AppName;
-        mainItem.display = model.display;
-        mainItem.icon = model.decoration;
-        mainItem.windows = model.WinIdList;
-        mainItem.isLauncher = model.IsLauncher;
 
-        tasksRoot.toolTipAreaItem = task;
+        mainItem.appName = Qt.binding(() => model.AppName);
+        mainItem.pidParent = Qt.binding(() => model.AppPid);
+        mainItem.windows = Qt.binding(() => model.WinIdList);
+        mainItem.isGroup = Qt.binding(() => model.IsGroupParent);
+        mainItem.icon = Qt.binding(() => model.decoration);
+        mainItem.launcherUrl = Qt.binding(() => model.LauncherUrlWithoutIcon);
+        mainItem.isLauncher = Qt.binding(() => model.IsLauncher);
+        mainItem.isMinimized = Qt.binding(() => model.IsMinimized);
+        mainItem.display = Qt.binding(() => model.display);
+        mainItem.genericName = Qt.binding(() => model.GenericName);
+        mainItem.virtualDesktops = Qt.binding(() => model.VirtualDesktops);
+        mainItem.isOnAllVirtualDesktops = Qt.binding(() => model.IsOnAllVirtualDesktops);
+        mainItem.activities = Qt.binding(() => model.Activities);
+
+        mainItem.smartLauncherCountVisible = Qt.binding(() => smartLauncherItem?.countVisible ?? false);
+        mainItem.smartLauncherCount = Qt.binding(() => mainItem.smartLauncherCountVisible ? (smartLauncherItem?.count ?? 0) : 0);
+
         mainItem.blockingUpdates = false;
+        tasksRoot.toolTipAreaItem = this;
     }
 
     Connections {
@@ -584,13 +597,6 @@ PlasmaCore.ToolTipArea {
         // El zoom se aplica solo como transformación visual al contenedor completo
         scale: zoomFactor
         transformOrigin: Item.Bottom
-
-        Behavior on scale {
-            NumberAnimation {
-                duration: 120 // Un poco más de tiempo evita el efecto "vibración"
-                easing.type: Easing.OutQuad // Más suave para transformaciones constantes
-            }
-        }
 
         z: 1
 
