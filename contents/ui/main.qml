@@ -606,7 +606,7 @@ PlasmoidItem {
 
                 // main.qml
 
-                width: taskRepeater.count * (66)  // 10 menos que la  altura del panel
+                width: taskRepeater.count * (Plasmoid.configuration.iconSize +  22)  // 10 menos que la  altura del panel
                 height: tasks.height
 
                 // 2. Calculamos el ancho real de todos los iconos sumados
@@ -630,6 +630,9 @@ PlasmoidItem {
                     anchors.fill: parent
                     hoverEnabled: true
                     propagateComposedEvents: true
+                    onPositionChanged: (mouse) => {
+                        mouse.accepted = false;
+                    }
 
                     Repeater {
                         id: taskRepeater
@@ -652,7 +655,7 @@ PlasmoidItem {
                                 return posX;
                             }
 
-                            width: (44 * zoomFactor) + 16
+                            width: (Plasmoid.configuration.iconSize * zoomFactor) + 16
 
                             // main.qml -> Repeater -> delegate: Task
                             MouseArea {

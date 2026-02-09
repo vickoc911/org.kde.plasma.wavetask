@@ -79,20 +79,17 @@ PlasmaCore.ToolTipArea {
 
     property Item dockRef: null // Esto recibirá el 'dockMouseArea' de main.qml
 
-    // Si el zoom es mayor a 1.01, asumimos que el ratón está "encima" para efectos de UI
-    readonly property bool highlighted: (inPopup && activeFocus)
-    || (!inPopup && (containsMouse || zoomFactor > 1.01))
+    readonly property bool highlighted: (inPopup && activeFocus) || (!inPopup && containsMouse)
     || (task.contextMenu && task.contextMenu.status === PlasmaExtras.Menu.Open)
     || (!!tasksRoot.groupDialog && tasksRoot.groupDialog.visualParent === task)
 
-    active: !inPopup && isHovered // Solo activo si el MouseArea de main.qml dice que hay hover
-    interactive: model.IsWindow || (mainItem && mainItem.playerData)
-    location: tasksRoot.location // Usa la ubicación del raíz, que es estable
+    active: !inPopup && !tasksRoot.groupDialog && task.contextMenu?.status !== PlasmaExtras.Menu.Open
+    interactive: false
+    location: Plasmoid.location
     mainItem: !Plasmoid.configuration.showToolTips || !model.IsWindow ? pinnedAppToolTipDelegate : openWindowToolTipDelegate
 
-    // El ancho de la tarea crece con el zoom, lo que empuja el Layout
     // y hace que el panel se expanda elásticamente.
-    width: 44
+    width: Plasmoid.configuration.iconSize
     height: tasksRoot.height
 
     // Desactivamos el recorte para que el zoom y el reflejo "vuelen" fuera
@@ -107,7 +104,7 @@ PlasmaCore.ToolTipArea {
 
         // Calculamos la posición X del centro de este icono relativa al dock entero
         // Importante: usamos 'task' (el ID del ToolTipArea) para mapear
-        let centerInDock = task.mapToItem(dockRef, 24, 0).x;
+        let centerInDock = task.mapToItem(dockRef, Plasmoid.configuration.iconSize/2, 0).x;
 
         let mouseXInDock = dockRef.mouseX;
         let distance = Math.abs(mouseXInDock - centerInDock);
@@ -116,7 +113,7 @@ PlasmaCore.ToolTipArea {
         if (distance > 180) return 1.0;
 
         // Curva de Gauss para el efecto tipo Mac
-        let amplitude = 0.9; // Cuánto crece (0.9 = 90% más grande)
+        let amplitude = (Plasmoid.configuration.magnification || 1) / 100;
         let sigma = 50;      // Qué tan ancho es el grupo de iconos que se agrandan
 
         let gauss = amplitude * Math.exp(-(Math.pow(distance, 2) / (2 * Math.pow(sigma, 2))));
@@ -129,19 +126,6 @@ PlasmaCore.ToolTipArea {
         NumberAnimation {
             duration: 100
             easing.type: Easing.OutCubic
-        }
-    }
-
-    // Manejo del tooltip en el zoom
-    onZoomFactorChanged: {
-        // Solo actuamos si hay un cambio significativo
-        if (zoomFactor > 1.1) {
-            if (!task.toolTipOpen && isHovered) {
-                // Eliminamos task.showToolTip() de aquí, Plasma lo hará solo
-                task.updateMainItemBindings();
-            }
-        } else if (zoomFactor <= 1.05 && task.toolTipOpen) {
-            // task.hideToolTip(); // Deja que Plasma maneje el cierre
         }
     }
 
@@ -261,8 +245,11 @@ PlasmaCore.ToolTipArea {
 
     onContainsMouseChanged: {
         if (containsMouse) {
-            task.forceActiveFocus(Qt.MouseFocusReason);
-            task.updateMainItemBindings();
+            // Ya NO usamos forceActiveFocus aquí.
+            // Solo actualizamos si el tooltip no está ya procesando un cambio
+            if (!task.toolTipOpen) {
+                task.updateMainItemBindings();
+            }
         } else {
             tasksRoot.toolTipOpenedByClick = null;
         }
@@ -591,8 +578,8 @@ PlasmaCore.ToolTipArea {
         anchors.bottomMargin: 0
 
         // Mantenemos el contenedor con un tamaño fijo
-        width: 44
-        height: 44
+        width: Plasmoid.configuration.iconSize
+        height: Plasmoid.configuration.iconSize
 
         // El zoom se aplica solo como transformación visual al contenedor completo
         scale: zoomFactor
@@ -600,12 +587,12 @@ PlasmaCore.ToolTipArea {
 
         Behavior on scale {
             NumberAnimation {
-                duration: 100 // Un poco más de tiempo evita el efecto "vibración"
+                duration: 120 // Un poco más de tiempo evita el efecto "vibración"
                 easing.type: Easing.OutQuad // Más suave para transformaciones constantes
             }
         }
 
-        z: 100
+        z: 1
 
         asynchronous: true
         active: task.smartLauncherItem && task.smartLauncherItem.countVisible
@@ -627,8 +614,8 @@ PlasmaCore.ToolTipArea {
 
         Kirigami.Icon {
             id: icon
-            width: 44
-            height: 44
+            width: Plasmoid.configuration.iconSize
+            height: Plasmoid.configuration.iconSize
 
             implicitWidth: width
             implicitHeight: height
@@ -677,8 +664,8 @@ PlasmaCore.ToolTipArea {
             anchors.horizontalCenterOffset: -4
 
             // Tamaño fijo para el reflejo
-            width: 44
-            height: 22
+            width: Plasmoid.configuration.iconSize
+            height: Plasmoid.configuration.iconSize / 2
             clip: true
             opacity: 0.5
             z: -1
@@ -686,8 +673,8 @@ PlasmaCore.ToolTipArea {
 
             Kirigami.Icon {
                 id: reflectionIcon
-                width: 44
-                height: 44
+                width: Plasmoid.configuration.iconSize
+                height: Plasmoid.configuration.iconSize
                 // Usamos el mismo source con caché
                 source: icon.source
                 // cache: true
@@ -699,15 +686,15 @@ PlasmaCore.ToolTipArea {
 
                 transform: Scale {
                     yScale: -1
-                    origin.y: 44
+                    origin.y: Plasmoid.configuration.iconSize
                 }
             }
         }
 
         Loader {
             anchors.centerIn: parent
-            width: 44
-            height: 44
+            width: Plasmoid.configuration.iconSize
+            height: Plasmoid.configuration.iconSize
             active: model.IsStartup
             sourceComponent: busyIndicator
         }

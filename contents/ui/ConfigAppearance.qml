@@ -20,6 +20,8 @@ KCMUtils.SimpleKCM {
     readonly property bool iconOnly: Plasmoid.pluginName === "org.kde.taskmanagerosx"
 
     // --- PROPIEDADES PRINCIPALES ---
+    property alias cfg_iconSize: iconSizeSlider.value
+    property alias cfg_magnification: magnificationSlider.value
     property string cfg_skinName: Plasmoid.configuration.skinName
     property alias cfg_showToolTips: showToolTips.checked
     property alias cfg_highlightWindows: highlightWindows.checked
@@ -81,6 +83,8 @@ KCMUtils.SimpleKCM {
     property var cfg_showOnlyMinimizedDefault
     property var cfg_showToolTipsDefault
     property var cfg_skinNameDefault
+    property var cfg_iconSizeDefault
+    property var cfg_magnificationDefault
     property var cfg_sortingStrategy
     property var cfg_sortingStrategyDefault
     property var cfg_taskHoverEffect
@@ -160,6 +164,53 @@ KCMUtils.SimpleKCM {
 
             // Intentar sincronizar al completar por si el disco es ultra rápido
             Component.onCompleted: syncValue()
+        }
+        // --- Selector de Tamaño de Iconos ---
+        RowLayout {
+            Kirigami.FormData.label: "icon size:"
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.Slider {
+                id: iconSizeSlider
+                Layout.fillWidth: true
+
+                from: 32
+                to: 64
+                stepSize: 2
+                snapMode: QQC2.Slider.SnapOnRelease
+
+                // El valor inicial vendrá de la configuración de Plasma
+                value: Plasmoid.configuration.iconSize || 44
+            }
+
+            QQC2.Label {
+                text: Math.floor(iconSizeSlider.value) + "px"
+                font.family: "Monospace"
+                color: Kirigami.Theme.disabledTextColor
+                Layout.preferredWidth: Kirigami.Units.gridUnit * 2
+            }
+        }
+        // --- Selector de Tamaño de Zoom ---
+        RowLayout {
+            Kirigami.FormData.label: "Magnification:"
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.Slider {
+                id: magnificationSlider
+                Layout.fillWidth: true
+                from: 1
+                to: 100
+                stepSize: 5
+                snapMode: QQC2.Slider.SnapOnRelease
+                // El valor inicial viene de la configuración (ej: 90% -> 0.9)
+                value: Plasmoid.configuration.magnification || 50
+            }
+            QQC2.Label {
+                text: Math.floor(magnificationSlider.value) + "%"
+                font.family: "Monospace"
+                color: Kirigami.Theme.disabledTextColor
+                Layout.preferredWidth: Kirigami.Units.gridUnit * 2
+            }
         }
 
         QQC2.CheckBox {
