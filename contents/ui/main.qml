@@ -404,6 +404,15 @@ PlasmoidItem {
         Connections {
             target: Plasmoid.configuration
 
+            function onSkinNameChanged() {
+                console.log("Nueva skin detectada: " + Plasmoid.configuration.skinName);
+                loadSkinConfig(); // La función que lee el .ini y carga la imagen
+            }
+
+            function onConfigurationChanged() {
+                loadSkinConfig();
+            }
+
             function onLaunchersChanged(): void {
                 tasksModel.launcherList = Plasmoid.configuration.launchers
             }

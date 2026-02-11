@@ -100,7 +100,7 @@ PlasmaCore.ToolTipArea {
     // ---------------------------------------------------------
     property real zoomFactor: {
         // Si no hay referencia al dock o el mouse no está sobre el dock, reset a 1.0
-        if (!dockRef || !dockRef.containsMouse) return 1.1;
+        if (!dockRef || !dockRef.containsMouse) return 1.0;
 
         // Calculamos la posición X del centro de este icono relativa al dock entero
         // Importante: usamos 'task' (el ID del ToolTipArea) para mapear
@@ -113,7 +113,8 @@ PlasmaCore.ToolTipArea {
        // if (distance > 180) return 1.0;
 
         // Curva de Gauss para el efecto tipo Mac
-        let amplitude = (Plasmoid.configuration.magnification || 1) / 100;
+        let amplitude = (Plasmoid.configuration.magnification || 0) / 100;
+        if (amplitude === 0) return 1.0;
         let sigma = 50;      // Qué tan ancho es el grupo de iconos que se agrandan
 
         let gauss = amplitude * Math.exp(-(Math.pow(distance, 2) / (2 * Math.pow(sigma, 2))));
@@ -788,8 +789,8 @@ PlasmaCore.ToolTipArea {
         completed = true;
     }
     Component.onDestruction: {
-        if (moveAnim.running) {
-      //      (task.parent as TaskList).animationsRunning -= 1;
-        }
+      /*  if (moveAnim.running) {
+            (task.parent as TaskList).animationsRunning -= 1;
+        } */
     }
 }

@@ -198,7 +198,7 @@ KCMUtils.SimpleKCM {
             QQC2.Slider {
                 id: magnificationSlider
                 Layout.fillWidth: true
-                from: 1
+                from: 0
                 to: 100
                 stepSize: 5
                 snapMode: QQC2.Slider.SnapOnRelease
