@@ -161,7 +161,7 @@
       <default>44</default>
     </entry>
     <entry name="magnification" type="Double">
-      <default>50.0</default>
+      <default>90.0</default>
     </entry>
   </group>
 
