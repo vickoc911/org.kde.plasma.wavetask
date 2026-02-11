@@ -78,6 +78,7 @@ PlasmoidItem {
    }
 
    // --- LÓGICA DE SKINS ---
+   property int topoutimage: 0
    property var skinParams: ({
        image: "", imagetask: "",
        left: 0, top: 0, right: 0, bottom: 0,
@@ -92,6 +93,12 @@ PlasmoidItem {
        console.log("Cargando configuración de skin desde: " + configUrl);
 
        let component = Qt.createComponent(configUrl);
+
+       if (Plasmoid.configuration.iconSize <= 44) {
+           tasks.topoutimage = Math.abs(Plasmoid.configuration.iconSize - 44);
+       } else {
+           tasks.topoutimage = 44 - Plasmoid.configuration.iconSize;
+      }
 
        if (component.status === Component.Ready) {
            let config = component.createObject(tasks); // 'tasks' es el id de tu PlasmoidItem
@@ -108,7 +115,7 @@ PlasmoidItem {
                    right: config.rightMargin,
                    bottom: config.bottomMargin,
                    outLeft: config.outsideLeftMargin,
-                   outTop: config.outsideTopMargin,
+                   outTop: config.outsideTopMargin + tasks.topoutimage,
                    outRight: config.outsideRightMargin,
                    outBottom: config.outsideBottomMargin
                };
@@ -409,7 +416,7 @@ PlasmoidItem {
                 loadSkinConfig(); // La función que lee el .ini y carga la imagen
             }
 
-            function onConfigurationChanged() {
+            function onIconSizeChanged() {
                 loadSkinConfig();
             }
 
