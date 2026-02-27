@@ -10,7 +10,7 @@ import QtQuick.Templates as T
 import org.kde.ksvg as KSvg
 import org.kde.plasma.plasmoid
 
-import "code/tools.js" as TaskTools
+import "code/TaskTools.js" as TaskTools
 
 T.ProgressBar {
     id: control
@@ -28,6 +28,9 @@ T.ProgressBar {
     value: task.smartLauncherItem.progress
 
     contentItem: Item {
+        LayoutMirroring.enabled: Application.layoutDirection === Qt.RightToLeft
+        LayoutMirroring.childrenInherit: false
+
         clip: true
 
         KSvg.FrameSvgItem {
@@ -37,7 +40,7 @@ T.ProgressBar {
             width: parent.width * control.position
             height: parent.height
 
-            imagePath: tasks.skinParams.imagetask
+            imagePath: "widgets/tasks"
             prefix: TaskTools.taskPrefix("progress", Plasmoid.location).concat(TaskTools.taskPrefix("hover", Plasmoid.location))
         }
     }

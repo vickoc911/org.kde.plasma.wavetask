@@ -16,7 +16,7 @@ import org.kde.taskmanager as TaskManager
 import org.kde.plasma.private.mpris as Mpris
 import org.kde.plasma.private.taskmanager as TaskManagerApplet
 
-import "code/layoutmetrics.js" as LayoutMetrics
+import "code/LayoutMetrics.js" as LayoutMetrics
 
 PlasmaExtras.Menu {
     id: menu
@@ -41,10 +41,10 @@ PlasmaExtras.Menu {
         }
     }
 
-    minimumWidth: visualParent.width
+    minimumWidth: (visualParent as Item).width
 
     onStatusChanged: {
-        if (visualParent && get(atm.LauncherUrlWithoutIcon).toString() !== "" && status === PlasmaExtras.Menu.Open) {
+        if (visualParent && get(TaskManager.AbstractTasksModel.LauncherUrlWithoutIcon).toString() !== "" && status === PlasmaExtras.Menu.Open) {
             activitiesDesktopsMenu.refresh();
 
         } else if (status === PlasmaExtras.Menu.Closed) {
@@ -62,7 +62,7 @@ PlasmaExtras.Menu {
     }
 
     function showContextMenuWithAllPlaces(): void {
-        visualParent.showContextMenu({showAllPlaces: true});
+        (visualParent as Task).showContextMenu({showAllPlaces: true});
     }
 
     function get(modelProp: int): var {
@@ -72,7 +72,7 @@ PlasmaExtras.Menu {
     function show(): void {
         Plasmoid.contextualActionsAboutToShow();
 
-        loadDynamicLaunchActions(get(atm.LauncherUrlWithoutIcon));
+        loadDynamicLaunchActions(get(TaskManager.AbstractTasksModel.LauncherUrlWithoutIcon));
         openRelative();
     }
 
@@ -81,7 +81,7 @@ PlasmaExtras.Menu {
             import org.kde.plasma.extras as PlasmaExtras
 
             PlasmaExtras.MenuItem {}
-        `, parent);
+        `, parent) as PlasmaExtras.MenuItem;
     }
 
     function newSeparator(parent: QtObject): PlasmaExtras.MenuItem {
@@ -89,7 +89,7 @@ PlasmaExtras.Menu {
             import org.kde.plasma.extras as PlasmaExtras
 
             PlasmaExtras.MenuItem { separator: true }
-            `, parent);
+            `, parent) as PlasmaExtras.MenuItem;
     }
 
     function loadDynamicLaunchActions(launcherUrl: url): void {
@@ -99,13 +99,13 @@ PlasmaExtras.Menu {
 
         if (placesActions.length > 0) {
             sections.push({
-                title: i18n("Places"),
+                title: i18nc("@title:group for section of menu items", "Places"),
                 group: "places",
                 actions: placesActions
             });
         } else {
             sections.push({
-                title:   i18n("Recent Files"),
+                title:  i18nc("@title:group for section of menu items", "Recent Files"),
                 group:   "recents",
                 actions: backend.recentDocumentActions(launcherUrl, menu)
             });
@@ -115,7 +115,7 @@ PlasmaExtras.Menu {
         sections = sections.filter(section => section.actions.length > 0);
 
         sections.push({
-            title: i18n("Actions"),
+            title: i18nc("@title:group for section of menu items", "Actions"),
             group: "actions",
             actions: backend.jumpListActions(launcherUrl, menu)
         });
@@ -157,9 +157,9 @@ PlasmaExtras.Menu {
         });
 
         // Add Media Player control actions
-        const playerData = mpris2Source.playerForLauncherUrl(launcherUrl, get(atm.AppPid));
+        const playerData = mpris2Source.playerForLauncherUrl(launcherUrl, get(TaskManager.AbstractTasksModel.AppPid));
 
-        if (playerData && playerData.canControl && !(get(atm.WinIdList) !== undefined && get(atm.WinIdList).length > 1)) {
+        if (playerData && playerData.canControl && !(get(TaskManager.AbstractTasksModel.WinIdList) !== undefined && get(TaskManager.AbstractTasksModel.WinIdList).length > 1)) {
             const playing = playerData.playbackStatus === Mpris.PlaybackStatus.Playing;
             let menuItem = menu.newMenuItem(menu);
             menuItem.text = i18nc("Play previous track", "Previous Track");
@@ -216,8 +216,8 @@ PlasmaExtras.Menu {
             menu.addMenuItem(menuItem, startNewInstanceItem);
 
             // Technically media controls and audio streams are separate but for the user they're
-            // semantically related, don't add a separator inbetween.
-            if (!menu.visualParent.hasAudioStream) {
+            // semantically related, don't add a separator in between.
+            if (!(menu.visualParent as Task).hasAudioStream) {
                 menu.addMenuItem(newSeparator(menu), startNewInstanceItem);
             }
 
@@ -238,7 +238,7 @@ PlasmaExtras.Menu {
 
             // If we don't have a window associated with the player but we can raise
             // it through MPRIS we'll offer a "Restore" option
-            if (get(atm.IsLauncher) && !startNewInstanceItem.visible && playerData.canRaise) {
+            if (get(TaskManager.AbstractTasksModel.IsLauncher) && !startNewInstanceItem.visible && playerData.canRaise) {
                 menuItem = menu.newMenuItem(menu);
                 menuItem.text = i18nc("Open or bring to the front window of media player app", "Restore");
                 menuItem.icon = playerData.iconName;
@@ -256,7 +256,7 @@ PlasmaExtras.Menu {
         // is actually playing sound.
         // This way you can unmute, e.g. a telephony app, even after the conversation has ended,
         // so you still have it ringing later on.
-        if (menu.visualParent.hasAudioStream) {
+        if ((menu.visualParent as Task).hasAudioStream) {
             const muteItem = menu.newMenuItem(menu);
             muteItem.checkable = true;
             muteItem.checked = Qt.binding(() => {
@@ -265,8 +265,8 @@ PlasmaExtras.Menu {
             muteItem.clicked.connect(() => {
                 menu.visualParent.toggleMuted();
             });
-            muteItem.text = i18n("Mute");
-            muteItem.icon = "audio-volume-muted";
+            muteItem.text = i18nc("@option:check inmenu, no separate unmute action", "Mute");
+            muteItem.icon = "audio-volume-muted" + (Application.layoutDirection === Qt.RightToLeft ? "-rtl" : "");
             menu.addMenuItem(muteItem, startNewInstanceItem);
 
             menu.addMenuItem(newSeparator(menu), startNewInstanceItem);
@@ -275,24 +275,24 @@ PlasmaExtras.Menu {
 
     PlasmaExtras.MenuItem {
         id: startNewInstanceItem
-        visible: get(atm.CanLaunchNewInstance)
-        text: i18n("Open New Window")
+        visible: menu.get(TaskManager.AbstractTasksModel.CanLaunchNewInstance)
+        text: i18nc("action:inmenu", "Open New Window")
         icon: "window-new"
 
-        onClicked: tasksModel.requestNewInstance(modelIndex)
+        onClicked: tasksModel.requestNewInstance(menu.modelIndex)
     }
 
     PlasmaExtras.MenuItem {
         id: virtualDesktopsMenuItem
 
         visible: virtualDesktopInfo.numberOfDesktops > 1
-            && (visualParent && !get(atm.IsLauncher)
-            && !get(atm.IsStartup)
-            && get(atm.IsVirtualDesktopsChangeable))
+            && (menu.visualParent && !menu.get(TaskManager.AbstractTasksModel.IsLauncher)
+            && !menu.get(TaskManager.AbstractTasksModel.IsStartup)
+            && menu.get(TaskManager.AbstractTasksModel.IsVirtualDesktopsChangeable))
 
         enabled: visible
 
-        text: i18n("Move to &Desktop")
+        text: i18nc("action:inmenu", "Move to &Desktop")
         icon: "virtual-desktops"
 
         readonly property Connections virtualDesktopsMenuConnections: Connections {
@@ -322,24 +322,24 @@ PlasmaExtras.Menu {
                 }
 
                 let menuItem = menu.newMenuItem(virtualDesktopsMenu);
-                menuItem.text = i18n("Move &To Current Desktop");
+                menuItem.text = i18nc("action:inmenu", "Move &To Current Desktop");
                 menuItem.enabled = Qt.binding(() => {
-                    return menu.visualParent && menu.get(atm.VirtualDesktops).indexOf(virtualDesktopInfo.currentDesktop) === -1;
+                    return menu.visualParent && menu.get(TaskManager.AbstractTasksModel.VirtualDesktops).indexOf(virtualDesktopInfo.currentDesktop) === -1;
                 });
                 menuItem.clicked.connect(() => {
                     tasksModel.requestVirtualDesktops(menu.modelIndex, [virtualDesktopInfo.currentDesktop]);
                 });
 
                 menuItem = menu.newMenuItem(virtualDesktopsMenu);
-                menuItem.text = i18n("&All Desktops");
+                menuItem.text = i18nc("action:inmenu", "&All Desktops");
                 menuItem.checkable = true;
                 menuItem.checked = Qt.binding(() => {
-                    return menu.visualParent && menu.get(atm.IsOnAllVirtualDesktops);
+                    return menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsOnAllVirtualDesktops);
                 });
                 menuItem.clicked.connect(() => {
                     tasksModel.requestVirtualDesktops(menu.modelIndex, []);
                 });
-                backend.setActionGroup(menuItem.action);
+                menu.backend.setActionGroup(menuItem.action);
 
                 menu.newSeparator(virtualDesktopsMenu);
 
@@ -348,18 +348,18 @@ PlasmaExtras.Menu {
                     menuItem.text = virtualDesktopInfo.desktopNames[i];
                     menuItem.checkable = true;
                     menuItem.checked = Qt.binding((i => {
-                        return () => menu.visualParent && menu.get(atm.VirtualDesktops).indexOf(virtualDesktopInfo.desktopIds[i]) > -1;
+                        return () => menu.visualParent && menu.get(TaskManager.AbstractTasksModel.VirtualDesktops).indexOf(virtualDesktopInfo.desktopIds[i]) > -1;
                     })(i));
                     menuItem.clicked.connect((i => {
                         return () => tasksModel.requestVirtualDesktops(menu.modelIndex, [virtualDesktopInfo.desktopIds[i]]);
                     })(i));
-                    backend.setActionGroup(menuItem.action);
+                    menu.backend.setActionGroup(menuItem.action);
                 }
 
                 menu.newSeparator(virtualDesktopsMenu);
 
                 menuItem = menu.newMenuItem(virtualDesktopsMenu);
-                menuItem.text = i18n("&New Desktop");
+                menuItem.text = i18nc("action:inmenu", "&New Desktop");
                 menuItem.icon = "list-add";
                 menuItem.clicked.connect(() => {
                     tasksModel.requestNewVirtualDesktop(menu.modelIndex);
@@ -374,12 +374,12 @@ PlasmaExtras.Menu {
         id: activitiesDesktopsMenuItem
 
         visible: activityInfo.numberOfRunningActivities > 1
-            && (visualParent && !get(atm.IsLauncher)
-            && !get(atm.IsStartup))
+            && (menu.visualParent && !menu.get(TaskManager.AbstractTasksModel.IsLauncher)
+            && !menu.get(TaskManager.AbstractTasksModel.IsStartup))
 
         enabled: visible
 
-        text: i18n("Show in &Activities")
+        text: i18nc("action:inmenu", "Show in &Activities")
         icon: "activities"
 
         readonly property Connections activityInfoConnections: Connections {
@@ -403,20 +403,20 @@ PlasmaExtras.Menu {
                 }
 
                 let menuItem = menu.newMenuItem(activitiesDesktopsMenu);
-                menuItem.text = i18n("Add To Current Activity");
+                menuItem.text = i18nc("action:inmenu", "Add To Current Activity");
                 menuItem.enabled = Qt.binding(() => {
-                    return menu.visualParent && menu.get(atm.Activities).length > 0 &&
-                           menu.get(atm.Activities).indexOf(activityInfo.currentActivity) < 0;
+                    return menu.visualParent && menu.get(TaskManager.AbstractTasksModel.Activities).length > 0 &&
+                           menu.get(TaskManager.AbstractTasksModel.Activities).indexOf(activityInfo.currentActivity) < 0;
                 });
                 menuItem.clicked.connect(() => {
-                    tasksModel.requestActivities(menu.modelIndex, menu.get(atm.Activities).concat(activityInfo.currentActivity));
+                    tasksModel.requestActivities(menu.modelIndex, menu.get(TaskManager.AbstractTasksModel.Activities).concat(activityInfo.currentActivity));
                 });
 
                 menuItem = menu.newMenuItem(activitiesDesktopsMenu);
-                menuItem.text = i18n("All Activities");
+                menuItem.text = i18nc("action:inmenu", "All Activities");
                 menuItem.checkable = true;
                 menuItem.checked = Qt.binding(() => {
-                    return menu.visualParent && menu.get(atm.Activities).length === 0;
+                    return menu.visualParent && menu.get(TaskManager.AbstractTasksModel.Activities).length === 0;
                 });
                 menuItem.toggled.connect(checked => {
                     let newActivities = []; // will cast to an empty QStringList i.e all activities
@@ -437,11 +437,11 @@ PlasmaExtras.Menu {
                     menuItem.icon = activityInfo.activityIcon(runningActivities[i]);
                     menuItem.checkable = true;
                     menuItem.checked = Qt.binding((activityId => {
-                        return () => menu.visualParent && menu.get(atm.Activities).indexOf(activityId) >= 0;
+                        return () => menu.visualParent && menu.get(TaskManager.AbstractTasksModel.Activities).indexOf(activityId) >= 0;
                     })(activityId));
                     menuItem.toggled.connect((activityId => {
                         return checked => {
-                            let newActivities = menu.get(atm.Activities);
+                            let newActivities = menu.get(TaskManager.AbstractTasksModel.Activities);
                             if (checked) {
                                 newActivities = newActivities.concat(activityId);
                             } else {
@@ -461,7 +461,7 @@ PlasmaExtras.Menu {
 
                 for (let i = 0; i < runningActivities.length; ++i) {
                     const activityId = runningActivities[i];
-                    const onActivities = menu.get(atm.Activities);
+                    const onActivities = menu.get(TaskManager.AbstractTasksModel.Activities);
 
                     // if the task is on a single activity, don't insert a "move to" item for that activity
                     if (onActivities.length === 1 && onActivities[0] === activityId) {
@@ -469,7 +469,7 @@ PlasmaExtras.Menu {
                     }
 
                     menuItem = menu.newMenuItem(activitiesDesktopsMenu);
-                    menuItem.text = i18n("Move to %1", activityInfo.activityName(activityId))
+                    menuItem.text = i18nc("action:inmenu", "Move to %1", activityInfo.activityName(activityId))
                     menuItem.icon = activityInfo.activityIcon(activityId)
                     menuItem.clicked.connect((activityId => {
                         return () => tasksModel.requestActivities(menu.modelIndex, [activityId]);
@@ -486,36 +486,36 @@ PlasmaExtras.Menu {
     PlasmaExtras.MenuItem {
         id: launcherToggleAction
 
-        visible: visualParent
-            && !get(atm.IsLauncher)
-            && !get(atm.IsStartup)
+        visible: menu.visualParent
+            && !menu.get(TaskManager.AbstractTasksModel.IsLauncher)
+            && !menu.get(TaskManager.AbstractTasksModel.IsStartup)
             && Plasmoid.immutability !== PlasmaCore.Types.SystemImmutable
             && (activityInfo.numberOfRunningActivities < 2)
             && !doesBelongToCurrentActivity()
 
-        enabled: visualParent && get(atm.LauncherUrlWithoutIcon).toString() !== ""
+        enabled: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.LauncherUrlWithoutIcon).toString() !== ""
 
-        text: i18n("&Pin to Task Manager")
+        text: i18nc("action:inmenu", "&Pin to Task Manager")
         icon: "window-pin"
 
         function doesBelongToCurrentActivity(): bool {
-            return tasksModel.launcherActivities(get(atm.LauncherUrlWithoutIcon))
+            return tasksModel.launcherActivities(menu.get(TaskManager.AbstractTasksModel.LauncherUrlWithoutIcon))
                 .some(activity => activity === activityInfo.currentActivity || activity === activityInfo.nullUuid);
         }
 
         onClicked: {
-            tasksModel.requestAddLauncher(get(atm.LauncherUrl));
+            tasksModel.requestAddLauncher(menu.get(TaskManager.AbstractTasksModel.LauncherUrl));
         }
     }
 
     PlasmaExtras.MenuItem {
         id: showLauncherInActivitiesItem
 
-        text: i18n("&Pin to Task Manager")
+        text: i18nc("action:inmenu", "&Pin to Task Manager")
         icon: "window-pin"
 
-        visible: visualParent
-            && !get(atm.IsStartup)
+        visible: menu.visualParent
+            && !menu.get(TaskManager.AbstractTasksModel.IsStartup)
             && Plasmoid.immutability !== PlasmaCore.Types.SystemImmutable
             && (activityInfo.numberOfRunningActivities >= 2)
 
@@ -559,17 +559,17 @@ PlasmaExtras.Menu {
 
                 if (menu.visualParent === null) return;
 
-                const url = menu.get(atm.LauncherUrlWithoutIcon);
+                const url = menu.get(TaskManager.AbstractTasksModel.LauncherUrlWithoutIcon);
 
                 const activities = tasksModel.launcherActivities(url);
 
-                createNewItem(activityInfo.nullUuid, i18n("On All Activities"), "", url, activities);
+                createNewItem(activityInfo.nullUuid, i18nc("action:inmenu", "On All Activities"), "", url, activities);
 
                 if (activityInfo.numberOfRunningActivities <= 1) {
                     return;
                 }
 
-                createNewItem(activityInfo.currentActivity, i18n("On The Current Activity"), activityInfo.activityIcon(activityInfo.currentActivity), url, activities);
+                createNewItem(activityInfo.currentActivity, i18nc("action:inmenu", "On The Current Activity"), activityInfo.activityIcon(activityInfo.currentActivity), url, activities);
 
                 menu.newSeparator(activitiesLaunchersMenu);
 
@@ -587,84 +587,84 @@ PlasmaExtras.Menu {
     }
 
     PlasmaExtras.MenuItem {
-        visible: (visualParent
-                && get(atm.IsStartup) !== true
+        visible: (menu.visualParent
+                && menu.get(TaskManager.AbstractTasksModel.IsStartup) !== true
                 && Plasmoid.immutability !== PlasmaCore.Types.SystemImmutable
                 && !launcherToggleAction.visible
                 && activityInfo.numberOfRunningActivities < 2)
 
-        text: i18n("Unpin from Task Manager")
+        text: i18nc("action:inmenu", "Unpin from Task Manager")
         icon: "window-unpin"
 
         onClicked: {
-            tasksModel.requestRemoveLauncher(get(atm.LauncherUrlWithoutIcon));
+            tasksModel.requestRemoveLauncher(menu.get(TaskManager.AbstractTasksModel.LauncherUrlWithoutIcon));
         }
     }
 
     PlasmaExtras.MenuItem {
         id: moreActionsMenuItem
 
-        visible: (visualParent && !get(atm.IsLauncher) && !get(atm.IsStartup))
+        visible: (menu.visualParent && !menu.get(TaskManager.AbstractTasksModel.IsLauncher) && !menu.get(TaskManager.AbstractTasksModel.IsStartup))
 
         enabled: visible
 
-        text: i18n("More")
+        text: i18nc("item:inmenu opens submenu", "More")
         icon: "view-more-symbolic"
 
         readonly property PlasmaExtras.Menu moreMenu: PlasmaExtras.Menu {
             visualParent: moreActionsMenuItem.action
 
             PlasmaExtras.MenuItem {
-                enabled: menu.visualParent && menu.get(atm.IsMovable)
+                enabled: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsMovable)
 
-                text: i18n("&Move")
+                text: i18nc("action:inmenu", "&Move")
                 icon: "transform-move"
 
                 onClicked: tasksModel.requestMove(menu.modelIndex)
             }
 
             PlasmaExtras.MenuItem {
-                enabled: menu.visualParent && menu.get(atm.IsResizable)
+                enabled: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsResizable)
 
-                text: i18n("Re&size")
+                text: i18nc("action:inmenu", "Re&size")
                 icon: "transform-scale"
 
                 onClicked: tasksModel.requestResize(menu.modelIndex)
             }
 
             PlasmaExtras.MenuItem {
-                visible: (menu.visualParent && !get(atm.IsLauncher) && !get(atm.IsStartup))
+                visible: (menu.visualParent && !menu.get(TaskManager.AbstractTasksModel.IsLauncher) && !menu.get(TaskManager.AbstractTasksModel.IsStartup))
 
-                enabled: menu.visualParent && get(atm.IsMaximizable)
+                enabled: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsMaximizable)
 
                 checkable: true
-                checked: menu.visualParent && get(atm.IsMaximized)
+                checked: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsMaximized)
 
-                text: i18n("Ma&ximize")
+                text: i18nc("action:inmenu", "Ma&ximize")
                 icon: "window-maximize"
 
-                onClicked: tasksModel.requestToggleMaximized(modelIndex)
+                onClicked: tasksModel.requestToggleMaximized(menu.modelIndex)
             }
 
             PlasmaExtras.MenuItem {
-                visible: (menu.visualParent && !get(atm.IsLauncher) && !get(atm.IsStartup))
+                visible: (menu.visualParent && !menu.get(TaskManager.AbstractTasksModel.IsLauncher) && !menu.get(TaskManager.AbstractTasksModel.IsStartup))
 
-                enabled: menu.visualParent && get(atm.IsMinimizable)
+                enabled: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsMinimizable)
 
                 checkable: true
-                checked: menu.visualParent && get(atm.IsMinimized)
+                checked: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsMinimized)
 
-                text: i18n("Mi&nimize")
+                text: i18nc("action:inmenu", "Mi&nimize")
                 icon: "window-minimize"
 
-                onClicked: tasksModel.requestToggleMinimized(modelIndex)
+                onClicked: tasksModel.requestToggleMinimized(menu.modelIndex)
             }
 
             PlasmaExtras.MenuItem {
                 checkable: true
-                checked: menu.visualParent && menu.get(atm.IsKeepAbove)
+                checked: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsKeepAbove)
 
-                text: i18n("Keep &Above Others")
+                text: i18nc("action:inmenu", "Keep &Above Others")
                 icon: "window-keep-above"
 
                 onClicked: tasksModel.requestToggleKeepAbove(menu.modelIndex)
@@ -672,43 +672,44 @@ PlasmaExtras.Menu {
 
             PlasmaExtras.MenuItem {
                 checkable: true
-                checked: menu.visualParent && menu.get(atm.IsKeepBelow)
+                checked: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsKeepBelow)
 
-                text: i18n("Keep &Below Others")
+                text: i18nc("action:inmenu", "Keep &Below Others")
                 icon: "window-keep-below"
 
                 onClicked: tasksModel.requestToggleKeepBelow(menu.modelIndex)
             }
 
             PlasmaExtras.MenuItem {
-                enabled: menu.visualParent && menu.get(atm.IsFullScreenable)
+                enabled: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsFullScreenable)
 
                 checkable: true
-                checked: menu.visualParent && menu.get(atm.IsFullScreen)
+                checked: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsFullScreen)
 
-                text: i18n("&Fullscreen")
+                text: i18nc("action:inmenu", "&Fullscreen")
                 icon: "view-fullscreen"
 
                 onClicked: tasksModel.requestToggleFullScreen(menu.modelIndex)
             }
 
             PlasmaExtras.MenuItem {
-                enabled: menu.visualParent && menu.get(atm.IsShadeable)
+                enabled: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsShadeable)
 
                 checkable: true
-                checked: menu.visualParent && menu.get(atm.IsShaded)
+                checked: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsShaded)
+                visible: Qt.platform.pluginName !== "wayland"
 
-                text: i18n("&Shade")
+                text: i18nc("action:inmenu", "&Shade")
                 icon: "window-shade"
 
                 onClicked: tasksModel.requestToggleShaded(menu.modelIndex)
             }
 
             PlasmaExtras.MenuItem {
-                enabled: menu.visualParent && menu.get(atm.CanSetNoBoder)
+                enabled: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.CanSetNoBoder)
 
                 checkable: true
-                checked: menu.visualParent && menu.get(atm.HasNoBorder)
+                checked: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.HasNoBorder)
 
                 text: i18nc("@action:inmenu", "&No Titlebar and Frame")
                 icon: "edit-none-border"
@@ -717,16 +718,29 @@ PlasmaExtras.Menu {
             }
 
             PlasmaExtras.MenuItem {
+                enabled: menu.visualParent
+
+                checkable: true
+                checked: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsExcludedFromCapture)
+                visible: Qt.platform.pluginName === "wayland"
+
+                text: i18nc("@action:inmenu", "&Hide from Screencast")
+                icon: "view-private"
+
+                onClicked: tasksModel.requestToggleExcludeFromCapture(menu.modelIndex)
+            }
+
+            PlasmaExtras.MenuItem {
                 separator: true
             }
 
             PlasmaExtras.MenuItem {
-                visible: (Plasmoid.configuration.groupingStrategy !== 0) && menu.get(atm.IsWindow)
+                visible: (Plasmoid.configuration.groupingStrategy !== 0) && menu.get(TaskManager.AbstractTasksModel.IsWindow)
 
                 checkable: true
-                checked: menu.visualParent && menu.get(atm.IsGroupable)
+                checked: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsGroupable)
 
-                text: i18n("Allow this program to be grouped")
+                text: i18nc("@option:check inmenu", "Allow this program to be grouped")
                 icon: "view-group"
 
                 onClicked: tasksModel.requestToggleGrouping(menu.modelIndex)
@@ -737,7 +751,7 @@ PlasmaExtras.Menu {
     PlasmaExtras.MenuItem { separator: true }
 
     PlasmaExtras.MenuItem {
-        property QtObject configureAction: null
+        property PlasmaCore.Action configureAction: null
 
         enabled: configureAction && configureAction.enabled
         visible: configureAction && configureAction.visible
@@ -751,7 +765,7 @@ PlasmaExtras.Menu {
     }
 
     PlasmaExtras.MenuItem {
-        property QtObject editModeAction: null
+        property PlasmaCore.Action editModeAction: null
 
         enabled: editModeAction && editModeAction.enabled
         visible: editModeAction && editModeAction.visible
@@ -768,19 +782,19 @@ PlasmaExtras.Menu {
 
     PlasmaExtras.MenuItem {
         id: closeWindowItem
-        visible: (visualParent && !get(atm.IsLauncher) && !get(atm.IsStartup))
+        visible: (menu.visualParent && !menu.get(TaskManager.AbstractTasksModel.IsLauncher) && !menu.get(TaskManager.AbstractTasksModel.IsStartup))
 
-        enabled: visualParent && get(atm.IsClosable)
+        enabled: menu.visualParent && menu.get(TaskManager.AbstractTasksModel.IsClosable)
 
-        text: get(atm.IsGroupParent) ? i18nc("@item:inmenu", "&Close All") : i18n("&Close")
+        text: menu.get(TaskManager.AbstractTasksModel.IsGroupParent) ? i18nc("@action:inmenu", "&Close All") : i18nc("@action:inmenu", "&Close")
         icon: "window-close"
 
         onClicked: {
-            if (tasks.groupDialog !== null && tasks.groupDialog.visualParent === visualParent) {
+            if (tasks.groupDialog !== null && tasks.groupDialog.visualParent === menu.visualParent) {
                 tasks.groupDialog.visible = false;
             }
 
-            tasksModel.requestClose(modelIndex);
+            tasksModel.requestClose(menu.modelIndex);
         }
     }
 }

@@ -17,6 +17,8 @@ import org.kde.plasma.workspace.dbus as DBus
 import org.kde.taskmanager as TaskManager
 
 KCMUtils.SimpleKCM {
+    id: root
+
     property alias cfg_groupingStrategy: groupingStrategy.currentIndex
     property alias cfg_groupedTaskVisualization: groupedTaskVisualization.currentIndex
     property alias cfg_groupPopups: groupPopups.checked
@@ -153,8 +155,8 @@ KCMUtils.SimpleKCM {
                     "value": TaskManager.TasksModel.SortWindowPositionHorizontal,
                 },
             ]
-            onActivated: cfg_sortingStrategy = currentValue
-            Component.onCompleted: currentIndex = indexOfValue(cfg_sortingStrategy)
+            onActivated: root.cfg_sortingStrategy = currentValue
+            Component.onCompleted: currentIndex = indexOfValue(root.cfg_sortingStrategy)
         }
 
         QQC2.CheckBox {
@@ -202,13 +204,14 @@ KCMUtils.SimpleKCM {
 
         QQC2.ComboBox {
             id: wheelEnabled
-            Kirigami.FormData.label: i18nc("@label:listbox Part of a sentence: 'Scrolling behavior does nothing/cycles through tasks/cycles through the selected task's windows'", "Scrolling behavior:")
+            Kirigami.FormData.label: i18nc("@label:listbox Part of a sentence: 'Scrolling behavior does nothing/cycles through tasks/cycles through the selected task's windows/adjusts the hovered task’s volume''", "Scrolling behavior:")
             Layout.fillWidth: true
             Layout.minimumWidth: Kirigami.Units.gridUnit * 14
             model: [
                 i18nc("@item:inlistbox Part of a sentence: 'Scrolling behavior does nothing'", "Does nothing"),
                 i18nc("@item:inlistbox Part of a sentence: 'Scrolling behavior cycles through all tasks'", "Cycles through all tasks"),
                 i18nc("@item:inlistbox Part of a sentence: 'Scrolling behavior cycles through the hovered task's windows'", "Cycles through the hovered task’s windows"),
+                i18nc("@item:inlistbox Part of a sentence: 'Scrolling behavior adjusts the hovered task’s volume'", "Adjusts the hovered task’s volume"),
             ]
         }
 
@@ -274,7 +277,7 @@ KCMUtils.SimpleKCM {
                     return i18nc("@option:check completes sentence: New tasks appear", "On the bottom")
                 }
                 // horizontal
-                if (Qt.application.layoutDirection === Qt.LeftToRight) {
+                if (Application.layoutDirection === Qt.LeftToRight) {
                     return i18nc("@option:check completes sentence: New tasks appear", "To the right");
                 } else {
                     return i18nc("@option:check completes sentence: New tasks appear", "To the left")
@@ -291,7 +294,7 @@ KCMUtils.SimpleKCM {
                     return i18nc("@option:check completes sentence: New tasks appear", "On the top")
                 }
                 // horizontal
-                if (Qt.application.layoutDirection === Qt.LeftToRight) {
+                if (Application.layoutDirection === Qt.LeftToRight) {
                     return i18nc("@option:check completes sentence: New tasks appear", "To the left");
                 } else {
                     return i18nc("@option:check completes sentence: New tasks appear", "To the right");

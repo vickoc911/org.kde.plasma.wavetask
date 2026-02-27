@@ -65,7 +65,7 @@ KSvg.SvgItem {
     implicitWidth: Math.min(naturalSize.width, iconBox.width)
     implicitHeight: Math.min(naturalSize.height, iconBox.width)
 
-    imagePath: tasks.skinParams.imagetask
+    imagePath: "widgets/tasks"
     elementId: elementForLocation()
 
     function elementForLocation(): string {

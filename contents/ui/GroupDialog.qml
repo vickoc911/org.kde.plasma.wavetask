@@ -4,6 +4,7 @@
 
     SPDX-License-Identifier: GPL-2.0-or-later
 */
+pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQml.Models
@@ -13,7 +14,8 @@ import org.kde.plasma.components as PlasmaComponents3
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.plasmoid
 
-import "code/layoutmetrics.js" as LayoutMetrics
+import "code/LayoutMetrics.js" as LayoutMetrics
+
 
 PlasmaCore.PopupPlasmaWindow {
     id: groupDialog
@@ -56,7 +58,7 @@ PlasmaCore.PopupPlasmaWindow {
             return;
         }
         for (let i = 0; i < groupListView.count; i++) {
-            if (tasksModel.makeModelIndex(visualParent.index, i) === tasksModel.activeTask) {
+            if (tasksModel.makeModelIndex((visualParent as Task).index, i) === tasksModel.activeTask) {
                 groupListView.positionViewAtIndex(i, ListView.Contain); // Prevent visual glitches
                 groupListView.currentIndex = i;
                 return;
@@ -66,7 +68,7 @@ PlasmaCore.PopupPlasmaWindow {
 
     Component.onCompleted: {
         // Don't bind visible at creation, otherwise it
-        // vill be made visible before assigning the visual partent
+        // will be made visible before assigning the visual partent
         // making the window flickering in the center of the screen before being moved
         // in the correct position
         visible = true
@@ -93,7 +95,7 @@ PlasmaCore.PopupPlasmaWindow {
                 return;
             }
 
-            const parentModelIndex = tasksModel.makeModelIndex(groupDialog.visualParent.index);
+            const parentModelIndex = tasksModel.makeModelIndex((groupDialog.visualParent as Task).index);
             const status = tasksModel.move(groupListView.currentIndex, insertAt, parentModelIndex);
             if (!status) {
                 return;
@@ -131,8 +133,10 @@ PlasmaCore.PopupPlasmaWindow {
                     property real maxTextWidth: 0
 
                     model: tasksModel
-                    rootIndex: tasksModel.makeModelIndex(groupDialog.visualParent.index)
+                    rootIndex: tasksModel.makeModelIndex((groupDialog.visualParent as Task).index)
                     delegate: Task {
+                        id: delegate
+
                         width: groupListView.width
                         visible: true
                         inPopup: true
@@ -140,7 +144,7 @@ PlasmaCore.PopupPlasmaWindow {
 
                         ListView.onRemove: Qt.callLater(groupFilter.updateMaxTextWidth)
                         Connections {
-                            enabled: index < 20 // 20 is based on performance considerations.
+                            enabled: delegate.index < 20 // 20 is based on performance considerations.
 
                             function onLabelTextChanged(): void { // ListView.onAdd included
                                 if (groupFilter.maxTextWidth === 0) {

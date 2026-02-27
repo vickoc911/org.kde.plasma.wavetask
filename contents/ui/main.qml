@@ -3,6 +3,7 @@
 
     SPDX-License-Identifier: GPL-2.0-or-later
 */
+pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
@@ -20,8 +21,8 @@ import org.kde.taskmanager as TaskManager
 import org.kde.plasma.private.taskmanager as TaskManagerApplet
 import org.kde.plasma.workspace.dbus as DBus
 
-import "code/layoutmetrics.js" as LayoutMetrics
-import "code/tools.js" as TaskTools
+import "code/LayoutMetrics.js" as LayoutMetrics
+import "code/TaskTools.js" as TaskTools
 
 PlasmoidItem {
     id: tasks
@@ -42,114 +43,102 @@ PlasmoidItem {
     readonly property Component contextMenuComponent: Qt.createComponent("ContextMenu.qml")
     readonly property Component pulseAudioComponent: Qt.createComponent("PulseAudio.qml")
 
-    property bool needLayoutRefresh: false
-    property /*list<WId> where WId = int|string*/ var taskClosedWithMouseMiddleButton: []
     property alias taskList: taskList
 
     preferredRepresentation: fullRepresentation
 
-   // Plasmoid.constraintHints: Plasmoid.CanFillArea
+  //  Plasmoid.constraintHints: Plasmoid.CanFillArea
 
-   // --- LÓGICA DE TRANSPARENCIA ---
-   property Item containmentItem: null
-   readonly property int depth: 14
-   property bool isBackgroundDisabled: true
+  // --- LÓGICA DE TRANSPARENCIA ---
+  property Item containmentItem: null
+  readonly property int depth: 14
+  property bool isBackgroundDisabled: true
 
-   function lookForContainer(object, tries) {
-       if (tries === 0 || object === null) return;
-       // Esta es la línea clave que dijiste que funciona
-       if (object.toString().indexOf("ContainmentItem_QML") > -1) {
-           tasks.containmentItem = object;
-           console.log("Contenedor encontrado en el intento: " + (depth - tries));
-       } else {
-           lookForContainer(object.parent, tries - 1);
-       }
-   }
+  function lookForContainer(object, tries) {
+      if (tries === 0 || object === null) return;
+      // Esta es la línea clave que dijiste que funciona
+      if (object.toString().indexOf("ContainmentItem_QML") > -1) {
+          tasks.containmentItem = object;
+          console.log("Contenedor encontrado en el intento: " + (depth - tries));
+      } else {
+          lookForContainer(object.parent, tries - 1);
+      }
+  }
 
-   function applyBackgroundHint() {
-       if (tasks.containmentItem === null) lookForContainer(tasks.parent, depth);
-       if (tasks.containmentItem === null) return;
+  function applyBackgroundHint() {
+      if (tasks.containmentItem === null) lookForContainer(tasks.parent, depth);
+      if (tasks.containmentItem === null) return;
 
-       // Aplicamos el NoBackground (0) o Default (1)
-       tasks.containmentItem.Plasmoid.backgroundHints = (isBackgroundDisabled) ? 0 : 1;
+      // Aplicamos el NoBackground (0) o Default (1)
+      tasks.containmentItem.Plasmoid.backgroundHints = (isBackgroundDisabled) ? 0 : 1;
 
-       // También lo aplicamos al objeto raíz por si acaso
-       tasks.Plasmoid.backgroundHints = (isBackgroundDisabled) ? 0 : 1;
-   }
+      // También lo aplicamos al objeto raíz por si acaso
+      tasks.Plasmoid.backgroundHints = (isBackgroundDisabled) ? 0 : 1;
+  }
 
-   // --- LÓGICA DE SKINS ---
-   property int topoutimage: 0
-   property var skinParams: ({
-       image: "", imagetask: "",
-       left: 0, top: 0, right: 0, bottom: 0,
-       outLeft: 0, outTop: 0, outRight: 0, outBottom: 0
-   })
+  // --- LÓGICA DE SKINS ---
+  property int topoutimage: 0
+  property var skinParams: ({
+      image: "", imagetask: "",
+      left: 0, top: 0, right: 0, bottom: 0,
+      outLeft: 0, outTop: 0, outRight: 0, outBottom: 0
+  })
 
-   function loadSkinConfig() {
-       let skinName = Plasmoid.configuration.skinName || "default";
-       // Construimos la ruta al nuevo archivo Config.qml
-       let configUrl = Qt.resolvedUrl("../skins/" + skinName + "/Config.qml");
+  function loadSkinConfig() {
+      let skinName = Plasmoid.configuration.skinName || "default";
+      // Construimos la ruta al nuevo archivo Config.qml
+      let configUrl = Qt.resolvedUrl("../skins/" + skinName + "/Config.qml");
 
-       console.log("Cargando configuración de skin desde: " + configUrl);
+      console.log("Cargando configuración de skin desde: " + configUrl);
 
-       let component = Qt.createComponent(configUrl);
+      let component = Qt.createComponent(configUrl);
 
-       if (Plasmoid.configuration.iconSize <= 44) {
-           tasks.topoutimage = Math.abs(Plasmoid.configuration.iconSize - 44);
-       } else {
-           tasks.topoutimage = 44 - Plasmoid.configuration.iconSize;
+      if (Plasmoid.configuration.iconSize <= 44) {
+          tasks.topoutimage = Math.abs(Plasmoid.configuration.iconSize - 44);
+      } else {
+          tasks.topoutimage = 44 - Plasmoid.configuration.iconSize;
       }
 
-       if (component.status === Component.Ready) {
-           let config = component.createObject(tasks); // 'tasks' es el id de tu PlasmoidItem
+      if (component.status === Component.Ready) {
+          let config = component.createObject(tasks); // 'tasks' es el id de tu PlasmoidItem
 
-           if (config) {
-               let skinFolderUrl = Qt.resolvedUrl("../skins/" + skinName + "/").toString();
+          if (config) {
+              let skinFolderUrl = Qt.resolvedUrl("../skins/" + skinName + "/").toString();
 
-               // Actualizamos skinParams de forma reactiva
-               tasks.skinParams = {
-                   image: skinFolderUrl + config.image,
-                   imagetask: skinFolderUrl + config.imagetask,
-                   left: config.leftMargin,
-                   top: config.topMargin,
-                   right: config.rightMargin,
-                   bottom: config.bottomMargin,
-                   outLeft: config.outsideLeftMargin,
-                   outTop: config.outsideTopMargin + tasks.topoutimage,
-                   outRight: config.outsideRightMargin,
-                   outBottom: config.outsideBottomMargin
-               };
+              // Actualizamos skinParams de forma reactiva
+              tasks.skinParams = {
+                  image: skinFolderUrl + config.image,
+                  imagetask: skinFolderUrl + config.imagetask,
+                  left: config.leftMargin,
+                  top: config.topMargin,
+                  right: config.rightMargin,
+                  bottom: config.bottomMargin,
+                  outLeft: config.outsideLeftMargin,
+                  outTop: config.outsideTopMargin + tasks.topoutimage,
+                  outRight: config.outsideRightMargin,
+                  outBottom: config.outsideBottomMargin
+              };
 
-               console.log("EXITO: Skin '" + skinName + "' cargada. Imagen: " + tasks.skinParams.image);
+              console.log("EXITO: Skin '" + skinName + "' cargada. Imagen: " + tasks.skinParams.image);
 
-               // Limpiamos el objeto temporal de memoria
-               config.destroy();
-           }
-       } else {
-           console.log("ERROR al cargar Config.qml: " + component.errorString());
-           // Fallback: Si no existe el .qml, podrías intentar cargar valores por defecto aquí
-       }
-   }
-
-   // Detecta si entra zoom y si sale
-   readonly property bool isZoomActive: {
-       for (let i = 0; i < taskRepeater.count; ++i) {
-           let item = taskRepeater.itemAt(i);
-           // Si el zoomFactor es mayor a 1.0 (o un umbral mínimo como 1.01)
-           if (item && item.zoomFactor > 1.01) return true;
-       }
-       return false;
-   }
-
-   // Detectar el momento exacto de entrada y salida
-/*   onIsZoomActiveChanged: {
-       if (isZoomActive) {
-           console.log("🚀 El zoom ha ENTRADO en efecto");
+              // Limpiamos el objeto temporal de memoria
+              config.destroy();
+          }
       } else {
-           console.log("🏠 El zoom ha TERMINADO (regresando al tamaño anterior)");
-           // Aquí regresas el fondo a su estado normal
-       }
-   } */
+          console.log("ERROR al cargar Config.qml: " + component.errorString());
+          // Fallback: Si no existe el .qml, podrías intentar cargar valores por defecto aquí
+      }
+  }
+
+  // Detecta si entra zoom y si sale
+  readonly property bool isZoomActive: {
+      for (let i = 0; i < taskRepeater.count; ++i) {
+          let item = taskRepeater.itemAt(i);
+          // Si el zoomFactor es mayor a 1.0 (o un umbral mínimo como 1.01)
+          if (item && item.zoomFactor > 1.01) return true;
+      }
+      return false;
+  }
 
     Plasmoid.onUserConfiguringChanged: {
         if (Plasmoid.userConfiguring && groupDialog !== null) {
@@ -247,7 +236,7 @@ PlasmoidItem {
             let startupsWithLaunchers = 0;
 
             for (let i = 0; i < taskRepeater.count; ++i) {
-                const item = taskRepeater.itemAt(i);
+                const item = taskRepeater.itemAt(i) as Task;
 
                 // During destruction required properties such as item.model can go null for a while,
                 // so in paths that can trigger on those moments, they need to be guarded
@@ -283,7 +272,7 @@ PlasmoidItem {
         groupMode: groupModeEnumValue(Plasmoid.configuration.groupingStrategy)
         groupInline: !Plasmoid.configuration.groupPopups && !tasks.iconsOnly
         groupingWindowTasksThreshold: (Plasmoid.configuration.onlyGroupWhenFull && !tasks.iconsOnly
-            ? LayoutMetrics.optimumCapacity(width, height) + 1 : -1)
+            ? LayoutMetrics.optimumCapacity(tasks.width, tasks.height) + 1 : -1)
 
         onLauncherListChanged: {
             Plasmoid.configuration.launchers = launcherList;
@@ -339,7 +328,7 @@ PlasmoidItem {
     readonly property TaskManagerApplet.Backend backend: TaskManagerApplet.Backend {
         id: backend
 
-        onAddLauncher: {
+        onAddLauncher: url => {
             tasks.addLauncher(url);
         }
     }
@@ -358,7 +347,7 @@ PlasmoidItem {
             onTriggered: {
                 const task = parent as Task;
                 if (task) {
-                    tasksModel.requestPublishDelegateGeometry(task.modelIndex(), backend.globalRect(task), task);
+                    tasks.tasksModel.requestPublishDelegateGeometry(task.modelIndex(), tasks.backend.globalRect(task), task);
                 }
                 destroy();
             }
@@ -405,8 +394,8 @@ PlasmoidItem {
 
         Loader {
             id: pulseAudio
-            sourceComponent: pulseAudioComponent
-            active: pulseAudioComponent.status === Component.Ready
+            sourceComponent: tasks.pulseAudioComponent
+            active: tasks.pulseAudioComponent.status === Component.Ready
         }
 
         Timer {
@@ -485,7 +474,7 @@ PlasmoidItem {
 
             onUrlsDropped: urls => {
                 // If all dropped URLs point to application desktop files, we'll add a launcher for each of them.
-                const createLaunchers = urls.every(item => backend.isApplication(item));
+                const createLaunchers = urls.every(item => tasks.backend.isApplication(item));
 
                 if (createLaunchers) {
                     urls.forEach(item => addLauncher(item));
@@ -498,7 +487,7 @@ PlasmoidItem {
 
                 // Otherwise we'll just start a new instance of the application with the URLs as argument,
                 // as you probably don't expect some of your files to open in the app and others to spawn launchers.
-                tasksModel.requestOpenUrls(hoveredItem.modelIndex(), urls);
+                tasksModel.requestOpenUrls((hoveredItem as Task).modelIndex(), urls);
             }
         }
 
@@ -631,34 +620,31 @@ PlasmoidItem {
 
             edge: {
                 switch (Plasmoid.location) {
-                    case PlasmaCore.Types.BottomEdge: return Qt.TopEdge;
-                    case PlasmaCore.Types.TopEdge: return Qt.BottomEdge;
-                    case PlasmaCore.Types.LeftEdge: return Qt.RightEdge;
-                    case PlasmaCore.Types.RightEdge: return Qt.LeftEdge;
-                    default: return Qt.TopEdge;
+                case PlasmaCore.Types.BottomEdge:
+                    return Qt.TopEdge;
+                case PlasmaCore.Types.TopEdge:
+                    return Qt.BottomEdge;
+                case PlasmaCore.Types.LeftEdge:
+                    return Qt.RightEdge;
+                case PlasmaCore.Types.RightEdge:
+                    return Qt.LeftEdge;
+                default:
+                    return Qt.TopEdge;
                 }
             }
 
-            // IMPORTANTE: Quitamos las anclas fijas para que el panel pueda centrarse
-            height: taskList.height
-            width: taskList.width
+            LayoutMirroring.enabled: tasks.shouldBeMirrored(Plasmoid.configuration.reverseMode, Application.layoutDirection, tasks.vertical)
             anchors {
                 left: parent.left
                 top: parent.top
-                // --- AÑADE ESTA LÍNEA ---
-                //  topMargin: + 5  // Esto baja o sube los iconos
-                // ------------------------
             }
 
-            anchors.centerIn: parent // Esto centra el Dock en el panel
+            height: taskList.height
+            width: taskList.width
 
             TaskList {
                 id: taskList
 
-                anchors {
-                    left: parent.left
-                    top: parent.top
-                }
 
                 width: taskRepeater.count * (Plasmoid.configuration.iconSize +  12)  // 10 menos que la  altura del panel
                 height: tasks.height
@@ -678,6 +664,13 @@ PlasmoidItem {
 
                 Layout.maximumWidth: width
 
+                flow: {
+                    if (tasks.vertical) {
+                        return Plasmoid.configuration.forceStripes ? Grid.LeftToRight : Grid.TopToBottom
+                    }
+                    return Plasmoid.configuration.forceStripes ? Grid.TopToBottom : Grid.LeftToRight
+                }
+
                 onAnimatingChanged: {
                     if (!animating) {
                         tasks.publishIconGeometries(children, tasks);
@@ -689,78 +682,78 @@ PlasmoidItem {
                     // El contenedor ahora es un área estática que llena el filtro
                     anchors.fill: parent
 
-                // 1. Este es el MouseArea que detecta el movimiento en todo el dock
-                MouseArea {
-                    id: dockMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    acceptedButtons: Qt.NoButton
+                    // 1. Este es el MouseArea que detecta el movimiento en todo el dock
+                    MouseArea {
+                        id: dockMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        acceptedButtons: Qt.NoButton
 
-                    // Posición suavizada del mouse
-                    property real smoothMouseX: -1
-                    property bool insideDock: false
+                        // Posición suavizada del mouse
+                        property real smoothMouseX: -1
+                        property bool insideDock: false
 
-                    // Suavizado de movimiento para evitar parpadeos
-                    onPositionChanged: (mouse) => {
-                        let mappedPos = mapToItem(tasks, mouse.x, mouse.y);
-                        if (smoothMouseX < 0) {
-                            smoothMouseX = mappedPos.x;
-                        } else {
-                            // Suavizado tipo “lerp” para movimiento fluido
-                            smoothMouseX = smoothMouseX + (mappedPos.x - smoothMouseX) * 0.3;
-                        }
-                        insideDock = true;
-                    }
-
-                    onEntered: {
-                        insideDock = true;
-                    }
-
-                    onExited: {
-                        exitTimer.restart();
-                    }
-
-                    Timer {
-                        id: exitTimer
-                        interval: 40
-                        repeat: false
-                        onTriggered: {
-                            if (!dockMouseArea.containsMouse) {
-                                dockMouseArea.insideDock = false;
-                                dockMouseArea.smoothMouseX = -1;
+                        // Suavizado de movimiento para evitar parpadeos
+                        onPositionChanged: (mouse) => {
+                            let mappedPos = mapToItem(tasks, mouse.x, mouse.y);
+                            if (smoothMouseX < 0) {
+                                smoothMouseX = mappedPos.x;
+                            } else {
+                                // Suavizado tipo “lerp” para movimiento fluido
+                                smoothMouseX = smoothMouseX + (mappedPos.x - smoothMouseX) * 0.3;
                             }
+                            insideDock = true;
                         }
-                    }
 
-                    onPressed: (mouse) => { mouse.accepted = false }
+                        onEntered: {
+                            insideDock = true;
+                        }
 
-                    Repeater {
-                        id: taskRepeater
-                        model: tasksModel
+                        onExited: {
+                            exitTimer.restart();
+                        }
 
-                        delegate: Task {
-                            id: taskItem
-                            tasksRoot: tasks
-                            // Pasamos la referencia si es necesario
-                            dockRef: dockMouseArea
-
-                            x: {
-                                let posX = taskList.centerOffset; // Empezamos en el centro calculado
-                                for (let i = 0; i < index; ++i) {
-                                    let previousItem = taskRepeater.itemAt(i);
-                                    // Si el item anterior existe, sumamos su ancho.
-                                    // Si no, sumamos el ancho base estimado (60) para que no se encimen.
-                                    posX += (previousItem ? previousItem.width : 60);
+                        Timer {
+                            id: exitTimer
+                            interval: 40
+                            repeat: false
+                            onTriggered: {
+                                if (!dockMouseArea.containsMouse) {
+                                    dockMouseArea.insideDock = false;
+                                    dockMouseArea.smoothMouseX = -1;
                                 }
-                                return posX;
                             }
+                        }
 
-                            width: (Plasmoid.configuration.iconSize * zoomFactor) + 6
+                        onPressed: (mouse) => { mouse.accepted = false }
+
+                        Repeater {
+                            id: taskRepeater
+                            model: tasksModel
+
+                            delegate: Task {
+                                id: taskItem
+                                tasksRoot: tasks
+                                // Pasamos la referencia si es necesario
+                                dockRef: dockMouseArea
+
+                                x: {
+                                    let posX = taskList.centerOffset; // Empezamos en el centro calculado
+                                    for (let i = 0; i < index; ++i) {
+                                        let previousItem = taskRepeater.itemAt(i);
+                                        // Si el item anterior existe, sumamos su ancho.
+                                        // Si no, sumamos el ancho base estimado (60) para que no se encimen.
+                                        posX += (previousItem ? previousItem.width : 60);
+                                    }
+                                    return posX;
+                                }
+
+                                width: (Plasmoid.configuration.iconSize * zoomFactor) + 6
+                            }
                         }
                     }
                 }
-                }
-            } // Fin de taskList (Item)
+            }
         }
     }
 
@@ -792,7 +785,7 @@ PlasmoidItem {
             return;
         }
 
-        const task = taskRepeater.itemAt(index);
+        const task = taskRepeater.itemAt(index) as Task;
         if (task) {
             TaskTools.activateTask(task.modelIndex(), task.model, null, task, Plasmoid, this, effectWatcher.registered);
         }
@@ -831,6 +824,7 @@ PlasmoidItem {
     Component.onDestruction: {
         TaskTools.taskManagerInstanceCount -= 1;
     }
+
     // para hacer panel transparente
     Timer {
         id: initializeAppletTimer

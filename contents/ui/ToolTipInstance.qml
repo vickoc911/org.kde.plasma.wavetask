@@ -24,6 +24,7 @@ import org.kde.kwindowsystem
 ColumnLayout {
     id: root
 
+    required property var model
     required property int index
     required property /*QModelIndex*/ var submodelIndex
     required property int appPid
@@ -100,9 +101,9 @@ ColumnLayout {
                 id: closeButtonFlippedItemProxy
                 target: closeButton
                 visible: toolTipDelegate.isWin &&
-                    ((tasks.Plasmoid.location == PlasmaCore.Types.LeftEdge &&
+                    ((Plasmoid.location == PlasmaCore.Types.LeftEdge &&
                       Application.layoutDirection == Qt.RightToLeft) ||
-                     (tasks.Plasmoid.location == PlasmaCore.Types.RightEdge &&
+                     (Plasmoid.location == PlasmaCore.Types.RightEdge &&
                       Application.layoutDirection == Qt.LeftToRight))
             }
 
@@ -242,7 +243,8 @@ ColumnLayout {
             id: thumbnailLoader
             active: !toolTipDelegate.isLauncher
                 && !albumArtImage.visible
-                && (Number.isInteger(thumbnailSourceItem.winId) || pipeWireLoader.item && !pipeWireLoader.item.hasThumbnail)
+                && (Number.isInteger(thumbnailSourceItem.winId) || pipeWireLoader.item
+                && !(pipeWireLoader.item as PipeWireThumbnail).hasThumbnail)
                 && root.index !== -1 // Avoid loading when the instance is going to be destroyed
             asynchronous: true
             visible: active
@@ -300,14 +302,19 @@ ColumnLayout {
             // shadow can cover up the highlight
             anchors.margins: thumbnailLoader.anchors.margins
 
-            active: !toolTipDelegate.isLauncher && !albumArtImage.visible && KWindowSystem.isPlatformWayland && root.index !== -1
+            active: Plasmoid.configuration.showToolTips
+                && !toolTipDelegate.isLauncher
+                && !albumArtImage.visible
+                && KWindowSystem.isPlatformWayland
+                && root.index !== -1
             asynchronous: true
             //In a loader since we might not have PipeWire available yet (WITH_PIPEWIRE could be undefined in plasma-workspace/libtaskmanager/declarative/taskmanagerplugin.cpp)
             source: "PipeWireThumbnail.qml"
         }
 
         Loader {
-            active: (pipeWireLoader.item?.hasThumbnail ?? false) || (thumbnailLoader.status === Loader.Ready && !root.isMinimized)
+            active: Plasmoid.configuration.showToolTips
+                && (((pipeWireLoader.item as PipeWireThumbnail)?.hasThumbnail ?? false) || (thumbnailLoader.status === Loader.Ready && !root.isMinimized))
             asynchronous: true
             visible: active
             anchors.fill: pipeWireLoader.active ? pipeWireLoader : thumbnailLoader
@@ -323,7 +330,10 @@ ColumnLayout {
         }
 
         Loader {
-            active: albumArtImage.visible && albumArtImage.status === Image.Ready && root.index !== -1 // Avoid loading when the instance is going to be destroyed
+            active: Plasmoid.configuration.showToolTips
+                && albumArtImage.visible
+                && albumArtImage.status === Image.Ready
+                && root.index !== -1 // Avoid loading when the instance is going to be destroyed
             asynchronous: true
             visible: active
             anchors.centerIn: hoverHandler
@@ -388,7 +398,7 @@ ColumnLayout {
         // when the instance is going to be destroyed
         active: (toolTipDelegate.parentTask?.tooltipControlsEnabled
              && toolTipDelegate.playerData
-             && ((hasTrackInATitle && albumArtImage.available) || (!hasTrackInATitle && root.index == 0))) ?? false
+             && ((root.hasTrackInATitle && albumArtImage.available) || (!root.hasTrackInATitle && root.index == 0))) ?? false
 
         asynchronous: true
         visible: active
@@ -419,22 +429,33 @@ ColumnLayout {
         Layout.rightMargin: headerItem.Layout.margins
         sourceComponent: RowLayout {
             PlasmaComponents3.ToolButton { // Mute button
+                id: muteButton
                 icon.width: Kirigami.Units.iconSizes.small
                 icon.height: Kirigami.Units.iconSizes.small
-                icon.name: if (checked) {
-                    "audio-volume-muted"
-                } else if (slider.displayValue <= 25) {
-                    "audio-volume-low"
-                } else if (slider.displayValue <= 75) {
-                    "audio-volume-medium"
-                } else {
-                    "audio-volume-high"
+                icon.name: {
+                    let finalIcon = ""
+
+                    if (checked) {
+                        finalIcon = "audio-volume-muted"
+                    } else if (slider.displayValue <= 25) {
+                        finalIcon = "audio-volume-low"
+                    } else if (slider.displayValue <= 75) {
+                        finalIcon = "audio-volume-medium"
+                    } else {
+                        finalIcon = "audio-volume-high"
+                    }
+
+                    if (mirrored) {
+                        finalIcon = finalIcon + "-rtl"
+                    }
+
+                    return finalIcon
                 }
                 onClicked: toolTipDelegate.parentTask.toggleMuted()
                 checked: toolTipDelegate.parentTask.muted
 
                 PlasmaComponents3.ToolTip {
-                    text: parent.checked
+                    text: muteButton.checked
                         ? i18nc("button to unmute app", "Unmute %1", toolTipDelegate.parentTask.appName)
                         : i18nc("button to mute app", "Mute %1", toolTipDelegate.parentTask.appName)
                 }
