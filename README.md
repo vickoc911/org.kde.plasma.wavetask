@@ -3,7 +3,8 @@ Task manager with OSX-style zoom. It's based on the default task manager of KDE 
 
 ## Support for previous Plasma releases
 
-Currently supported versions: 6.5
+Currently supported versions: 6.5.
+
 If you need to install it on Plasma 6.6, I recommend you do it from here: https://github.com/vickoc911/org.vicko.wavetask
 
 ## How to install:
