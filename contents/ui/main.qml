@@ -18,7 +18,7 @@ import org.kde.kirigami as Kirigami
 import org.kde.plasma.workspace.trianglemousefilter
 
 import org.kde.taskmanager as TaskManager
-import org.kde.plasma.private.taskmanager as TaskManagerApplet
+import plasma.applet.org.kde.plasma.taskmanager as TaskManagerApplet
 import org.kde.plasma.workspace.dbus as DBus
 
 import "code/LayoutMetrics.js" as LayoutMetrics
@@ -44,6 +44,7 @@ PlasmoidItem {
     readonly property Component pulseAudioComponent: Qt.createComponent("PulseAudio.qml")
 
     property alias taskList: taskList
+    property alias taskRepeater: taskRepeater
 
     preferredRepresentation: fullRepresentation
 
@@ -515,8 +516,7 @@ PlasmoidItem {
                 id: internalCanvas
 
                 // Definimos cuánto queremos que crezca el fondo lateralmente
-                readonly property int expansionAmount: tasks.isZoomActive ? 74 : 0
-
+                readonly property int expansionAmount: tasks.isZoomActive ? 42 : -(Plasmoid.configuration.iconSize * Plasmoid.configuration.amplitud)-42
                 // 2. CAPA DE FONDO
                 KSvg.FrameSvgItem {
                     id: backgroundItem
@@ -529,8 +529,8 @@ PlasmoidItem {
                     y: (Plasmoid.configuration.iconSize < 48) ? shadowItem.margins.top + 6 : shadowItem.margins.top - 4
 
                     // --- ANCHO Y POSICIÓN DINÁMICA ---
-                    width: (taskList.width - 56) + internalCanvas.expansionAmount
-                    x: 28 - (internalCanvas.expansionAmount / 2)
+                    width: (taskList.width - 24) + internalCanvas.expansionAmount
+                    x: 12 - (internalCanvas.expansionAmount / 2)
 
                     // Animaciones para suavizar el estiramiento
                     Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
@@ -555,8 +555,8 @@ PlasmoidItem {
                     y: (Plasmoid.configuration.iconSize < 48) ? 6 : -4
 
                     // --- ANCHO Y POSICIÓN DE SOMBRA DINÁMICA ---
-                    width: (taskList.width - 32) + internalCanvas.expansionAmount
-                    x: 16 - (internalCanvas.expansionAmount / 2)
+                    width: (taskList.width) + internalCanvas.expansionAmount
+                    x: 0 - (internalCanvas.expansionAmount / 2)
 
                     // Animaciones para que la sombra siga al fondo suavemente
                     Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
@@ -576,8 +576,8 @@ PlasmoidItem {
 
                 // 1. Definimos propiedades para animar los laterales
                 // Si hay zoom, restamos un valor (ej. 20px) para que el fondo se extienda
-                property int dynamicLeftMargin: tasks.isZoomActive ? (tasks.skinParams.outLeft - 26) : tasks.skinParams.outLeft
-                property int dynamicRightMargin: tasks.isZoomActive ? (tasks.skinParams.outRight - 26) : tasks.skinParams.outRight
+                property int dynamicLeftMargin: tasks.isZoomActive ? (tasks.skinParams.outLeft - 26) : (tasks.skinParams.outLeft + (Plasmoid.configuration.iconSize * Plasmoid.configuration.amplitud)-26)
+                property int dynamicRightMargin: tasks.isZoomActive ? (tasks.skinParams.outRight - 26) : (tasks.skinParams.outRight + (Plasmoid.configuration.iconSize * Plasmoid.configuration.amplitud)-26)
 
                 anchors {
                     fill: parent
@@ -645,8 +645,12 @@ PlasmoidItem {
             TaskList {
                 id: taskList
 
+                property real smoothMouseX: -1
+                property bool insideDock: false
+                property alias animating: taskList.animating
 
-                width: taskRepeater.count * (Plasmoid.configuration.iconSize +  12)  // 10 menos que la  altura del panel
+
+                width: Math.ceil(taskRepeater.count * (Plasmoid.configuration.iconSize +  (Plasmoid.configuration.iconSize * Plasmoid.configuration.amplitud)/4)) + 12
                 height: tasks.height
 
                 // 2. Calculamos el ancho real de todos los iconos sumados
@@ -677,80 +681,62 @@ PlasmoidItem {
                     }
                 }
 
-                Item {
-                    id: dockContainer
-                    // El contenedor ahora es un área estática que llena el filtro
-                    anchors.fill: parent
+                HoverHandler {
+                    id: dockHoverHandler
 
-                    // 1. Este es el MouseArea que detecta el movimiento en todo el dock
-                    MouseArea {
-                        id: dockMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        acceptedButtons: Qt.NoButton
+                    onPointChanged: {
+                        let mappedPos = taskList.mapToItem(tasks, point.position.x, point.position.y)
 
-                        // Posición suavizada del mouse
-                        property real smoothMouseX: -1
-                        property bool insideDock: false
-
-                        // Suavizado de movimiento para evitar parpadeos
-                        onPositionChanged: (mouse) => {
-                            let mappedPos = mapToItem(tasks, mouse.x, mouse.y);
-                            if (smoothMouseX < 0) {
-                                smoothMouseX = mappedPos.x;
-                            } else {
-                                // Suavizado tipo “lerp” para movimiento fluido
-                                smoothMouseX = smoothMouseX + (mappedPos.x - smoothMouseX) * 0.3;
-                            }
-                            insideDock = true;
+                        if (taskList.smoothMouseX < 0) {
+                            taskList.smoothMouseX = mappedPos.x
+                        } else {
+                            taskList.smoothMouseX +=
+                            (mappedPos.x - taskList.smoothMouseX) * 0.3
                         }
 
-                        onEntered: {
-                            insideDock = true;
-                        }
+                        taskList.insideDock = true
+                    }
 
-                        onExited: {
+                    onHoveredChanged: {
+                        if (hovered) {
+                            taskList.insideDock = true;
+                        } else {
                             exitTimer.restart();
                         }
+                    }
+                }
 
-                        Timer {
-                            id: exitTimer
-                            interval: 40
-                            repeat: false
-                            onTriggered: {
-                                if (!dockMouseArea.containsMouse) {
-                                    dockMouseArea.insideDock = false;
-                                    dockMouseArea.smoothMouseX = -1;
-                                }
-                            }
+                Timer {
+                    id: exitTimer
+                    interval: 40
+                    repeat: false
+                    onTriggered: {
+                        if (!dockHoverHandler.hovered) {
+                            taskList.insideDock = false;
                         }
+                    }
+                }
 
-                        onPressed: (mouse) => { mouse.accepted = false }
+                Repeater {
+                    id: taskRepeater
+                    model: tasksModel
 
-                        Repeater {
-                            id: taskRepeater
-                            model: tasksModel
+                    delegate: Task {
+                        id: taskItem
+                        tasksRoot: tasks
+                        dockRef: taskList
 
-                            delegate: Task {
-                                id: taskItem
-                                tasksRoot: tasks
-                                // Pasamos la referencia si es necesario
-                                dockRef: dockMouseArea
-
-                                x: {
-                                    let posX = taskList.centerOffset; // Empezamos en el centro calculado
-                                    for (let i = 0; i < index; ++i) {
-                                        let previousItem = taskRepeater.itemAt(i);
-                                        // Si el item anterior existe, sumamos su ancho.
-                                        // Si no, sumamos el ancho base estimado (60) para que no se encimen.
-                                        posX += (previousItem ? previousItem.width : 60);
-                                    }
-                                    return posX;
-                                }
-
-                                width: (Plasmoid.configuration.iconSize * zoomFactor) + 6
+                        x: {
+                            let posX = taskList.centerOffset; // Empezamos en el centro calculado
+                            for (let i = 0; i < index; ++i) {
+                                let previousItem = taskRepeater.itemAt(i);
+                                // Si el item anterior existe, sumamos su ancho.
+                                // Si no, sumamos el ancho base estimado (60) para que no se encimen.
+                                posX += (previousItem ? previousItem.width : 60);
                             }
+                            return posX;
                         }
+                        width: (Plasmoid.configuration.iconSize * zoomFactor) + 6
                     }
                 }
             }

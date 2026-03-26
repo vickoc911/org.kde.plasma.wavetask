@@ -34,7 +34,9 @@ KCMUtils.SimpleKCM {
     // wavetask
     property alias cfg_iconSize: iconSizeSlider.value
     property alias cfg_magnification: magnificationSlider.value
+    property alias cfg_amplitud: amplitudSlider.value
     property string cfg_skinName: Plasmoid.configuration.skinName
+    property alias cfg_showReflection: showReflection.checked
 
     Component.onCompleted: {
         /* Don't rely on bindings for checking the radiobuttons
@@ -150,6 +152,38 @@ KCMUtils.SimpleKCM {
                 color: Kirigami.Theme.disabledTextColor
                 Layout.preferredWidth: Kirigami.Units.gridUnit * 2
             }
+        }
+
+        // --- Selector de Amplitud ---
+        RowLayout {
+            Kirigami.FormData.label: "Amplitude:"
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.Slider {
+                id: amplitudSlider
+                Layout.fillWidth: true
+
+                from: 1.1
+                to: 2.5
+                stepSize: 0.1
+                snapMode: QQC2.Slider.SnapOnRelease
+
+                // El valor inicial vendrá de la configuración de Plasma
+                value: Plasmoid.configuration.amplitud || 1.8
+            }
+
+            QQC2.Label {
+                text: amplitudSlider.value.toFixed(1)
+                font.family: "Monospace"
+                color: Kirigami.Theme.disabledTextColor
+                Layout.preferredWidth: Kirigami.Units.gridUnit * 0.2
+            }
+        }
+
+        QQC2.CheckBox {
+            id: showReflection
+            Kirigami.FormData.label: i18nc("@label", "Reflection:")
+            text: i18nc("@option:check", "Show icon reflection below dock")
         }
 
         QQC2.CheckBox {

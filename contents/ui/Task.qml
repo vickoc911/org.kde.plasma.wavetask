@@ -15,7 +15,7 @@ import org.kde.ksvg as KSvg
 import org.kde.plasma.extras as PlasmaExtras
 import org.kde.plasma.components as PlasmaComponents3
 import org.kde.kirigami as Kirigami
-import org.kde.plasma.private.taskmanager as TaskManagerApplet
+import plasma.applet.org.kde.plasma.taskmanager as TaskManagerApplet
 import org.kde.plasma.plasmoid
 
 import "code/LayoutMetrics.js" as LayoutMetrics
@@ -98,8 +98,8 @@ PlasmaCore.ToolTipArea {
     property Item dockRef: null // Esto recibirá el 'dockMouseArea' de main.qml
 
     readonly property real _baseSize: Plasmoid.configuration.iconSize
-    readonly property real _sigma: _baseSize * 1.8
-    readonly property real _amplitude: (Plasmoid.configuration.magnification || 0) / 100
+    readonly property real _sigma: _baseSize * Plasmoid.configuration.amplitud
+    readonly property real _zoom: (Plasmoid.configuration.magnification || 0) / 100
 
     // ---------------------------------------------------------
     // INICIO DEL CÓDIGO ZOOM (OSX EFFECT)
@@ -107,27 +107,32 @@ PlasmaCore.ToolTipArea {
 
     property real zoomFactor: {
         // Guardias de seguridad básicas
-        if (!dockRef || _amplitude <= 0) return 1.0;
-
-        if (!dockRef.insideDock) return 1.0;
+        if (!dockRef || _zoom <= 0) return 1.0;
 
         let mX = dockRef.smoothMouseX;
         if (mX < 0) return 1.0;
 
-        // Distancia del mouse al centro del icono
-        let centerInDock = task.mapToItem(dockRef, _baseSize / 2, 0).x;
-        let distance = Math.abs(mX - centerInDock);
+        // Calculamos la distancia usando posiciones estáticas (sin zoom) para evitar bucles de retroalimentación en el layout
+        let totalWidth = tasksRoot.taskRepeater.count * _baseSize;
+        let centerOffset = (tasksRoot.taskList.width - totalWidth) / 2;
+        let iconCenter = centerOffset + (index * _baseSize) + (_baseSize / 2);
+
+        let distance = Math.abs(mX - iconCenter);
 
         // Si el mouse está muy lejos, no escalamos
         if (distance > _sigma * 3) return 1.0;
 
+        // Aplicamos la escala de entrada/salida a la amplitud
+        let dynamicZoom = _zoom * entryProgress;
+
         // Curva tipo Gauss para suavizado estilo Mac
-        //  return 1.0 + _amplitude * Math.exp(-Math.pow(distance / 1.2, 2) / (2 * Math.pow(_sigma, 2)));
-        return 1.0 + _amplitude * Math.exp(-(Math.pow(distance, 2) / (2 * Math.pow(_sigma, 2))));
+        //  return 1.0 + _zoom * Math.exp(-Math.pow(distance / 1.2, 2) / (2 * Math.pow(_sigma, 2)));
+        return 1.0 + dynamicZoom * Math.exp(-(Math.pow(distance, 2) / (2 * Math.pow(_sigma, 2))));
     }
 
-    // Mantenemos el Behavior para que la transición al salir del dock sea suave
-    Behavior on zoomFactor {
+    property real entryProgress: (dockRef && dockRef.insideDock) ? 1.0 : 0.0
+
+    Behavior on entryProgress {
         NumberAnimation {
             duration: 200
             easing.type: Easing.OutCubic
@@ -286,7 +291,7 @@ PlasmaCore.ToolTipArea {
 
     onSmartLauncherEnabledChanged: {
         if (smartLauncherEnabled && !smartLauncherItem) {
-            const component = Qt.createComponent("org.vicko.wavetask", "SmartLauncherItem");
+            const component = Qt.createComponent("org.kde.plasma.wavetask", "SmartLauncherItem");
             const smartLauncher = component.createObject(task);
             component.destroy();
 
@@ -668,7 +673,7 @@ PlasmaCore.ToolTipArea {
             clip: true
             opacity: 0.5
             z: -1
-            visible: true
+            visible: Plasmoid.configuration.showReflection
 
             Kirigami.Icon {
                 id: reflectionIcon
@@ -698,80 +703,6 @@ PlasmaCore.ToolTipArea {
             sourceComponent: busyIndicator
         }
     }
- /*   Loader {
-        id: iconBox
-
-        anchors {
-            left: parent.left
-            leftMargin: adjustMargin(true, parent.width, taskFrame.margins.left)
-            top: parent.top
-            topMargin: adjustMargin(false, parent.height, taskFrame.margins.top)
-        }
-
-        width: task.inPopup ? Math.max(Kirigami.Units.iconSizes.sizeForLabels, Kirigami.Units.iconSizes.medium) : Math.min(task.parent?.minimumWidth ?? 0, task.height)
-        height: task.inPopup ? width : (parent.height - adjustMargin(false, parent.height, taskFrame.margins.top)
-                 - adjustMargin(false, parent.height, taskFrame.margins.bottom))
-
-        asynchronous: true
-        active: height >= Kirigami.Units.iconSizes.small
-                && task.smartLauncherItem && task.smartLauncherItem.countVisible
-        source: "TaskBadgeOverlay.qml"
-
-        function adjustMargin(isVertical: bool, size: real, margin: real): real {
-            if (!size) {
-                return margin;
-            }
-
-            var margins = isVertical ? LayoutMetrics.horizontalMargins() : LayoutMetrics.verticalMargins();
-
-            if ((size - margins) < Kirigami.Units.iconSizes.small) {
-                return Math.ceil((margin * (Kirigami.Units.iconSizes.small / size)) / 2);
-            }
-
-            return margin;
-        }
-
-        Kirigami.Icon {
-            id: icon
-
-            anchors.fill: parent
-
-            active: task.highlighted
-            enabled: true
-
-            source: task.model.decoration
-        }
-
-        states: [
-            // Using a state transition avoids a binding loop between label.visible and
-            // the text label margin, which derives from the icon width.
-            State {
-                name: "standalone"
-                when: !label.visible && task.parent
-
-                AnchorChanges {
-                    target: iconBox
-                    anchors.left: undefined
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                PropertyChanges {
-                    iconBox.anchors.leftMargin: 0
-                    iconBox.width: Math.min(task.parent.minimumWidth, tasksRoot.height)
-                        - iconBox.adjustMargin(true, task.width, taskFrame.margins.left)
-                        - iconBox.adjustMargin(true, task.width, taskFrame.margins.right)
-                }
-            }
-        ]
-
-        Loader {
-            anchors.centerIn: parent
-            width: Math.min(parent.width, parent.height)
-            height: width
-            active: task.model.IsStartup
-            sourceComponent: busyIndicator
-        }
-    } */
 
     PlasmaComponents3.Label {
         id: label
