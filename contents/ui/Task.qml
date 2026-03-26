@@ -15,7 +15,7 @@ import org.kde.ksvg as KSvg
 import org.kde.plasma.extras as PlasmaExtras
 import org.kde.plasma.components as PlasmaComponents3
 import org.kde.kirigami as Kirigami
-import plasma.applet.org.kde.plasma.taskmanager as TaskManagerApplet
+import org.kde.plasma.private.taskmanager as TaskManagerApplet
 import org.kde.plasma.plasmoid
 
 import "code/LayoutMetrics.js" as LayoutMetrics
